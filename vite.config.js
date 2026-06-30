@@ -76,7 +76,7 @@ export default defineConfig({
       }
     })
   ],
-  base: '/Garage43/',
+  base: '/',
   build: {
     outDir: 'dist',
     sourcemap: false
