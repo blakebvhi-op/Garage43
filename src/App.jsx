@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Wrench, CheckCircle2, AlertCircle, LogOut, Bike as BikeIcon, DollarSign, Zap, Image as ImageIcon, Copy } from 'lucide-react';
+import { Plus, CheckCircle2, AlertCircle, LogOut, Bike as BikeIcon, DollarSign, Copy, Warehouse, ChevronRight, Users, KeyRound, Trash2 } from 'lucide-react';
+import { supabase } from './supabaseClient';
 
-// Pre-built maintenance templates for common bikes
 const MAINTENANCE_TEMPLATES = {
   harley: {
     name: 'Harley-Davidson',
@@ -37,16 +37,38 @@ const MAINTENANCE_TEMPLATES = {
 };
 
 function GarageApp() {
-  const [view, setView] = useState('auth'); // auth, dashboard, bike-detail
+  // view: auth, garages, garage-detail, bike-detail
+  const [view, setView] = useState('auth');
   const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [authMode, setAuthMode] = useState('signin'); // signin or signup
+  const [authError, setAuthError] = useState('');
+
+  const [garages, setGarages] = useState([]);
+  const [selectedGarage, setSelectedGarage] = useState(null);
+  const [garageMembers, setGarageMembers] = useState([]);
   const [bikes, setBikes] = useState([]);
   const [selectedBike, setSelectedBike] = useState(null);
+  const [maintenanceTasks, setMaintenanceTasks] = useState([]);
+
+  const [loading, setLoading] = useState(false);
+
+  // Modals
+  const [showAddGarage, setShowAddGarage] = useState(false);
+  const [showJoinGarage, setShowJoinGarage] = useState(false);
   const [showAddBike, setShowAddBike] = useState(false);
   const [showAddMaintenance, setShowAddMaintenance] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
   const [showUpdateMileage, setShowUpdateMileage] = useState(false);
+  const [showMembers, setShowMembers] = useState(false);
+
+  // Form fields
+  const [garageName, setGarageName] = useState('');
+  const [garageLocation, setGarageLocation] = useState('');
+  const [joinCode, setJoinCode] = useState('');
+  const [joinError, setJoinError] = useState('');
   const [bikeName, setBikeName] = useState('');
   const [bikeYear, setBikeYear] = useState('');
   const [bikeModel, setBikeModel] = useState('');
@@ -60,118 +82,349 @@ function GarageApp() {
   const [maintenancePhoto, setMaintenancePhoto] = useState('');
   const [currentMileageInput, setCurrentMileageInput] = useState('');
 
-  // Simulate auth with localStorage
+  // ============================
+  // AUTH
+  // ============================
   useEffect(() => {
-    const savedUser = localStorage.getItem('garage-user');
-    const savedBikes = localStorage.getItem('garage-bikes');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-      if (savedBikes) setBikes(JSON.parse(savedBikes));
-      setView('dashboard');
-    }
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setAuthLoading(false);
+      if (session?.user) {
+        setView('garages');
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        setView('garages');
+      } else {
+        setView('auth');
+        setGarages([]);
+        setSelectedGarage(null);
+        setSelectedBike(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  // Handle signup/login
-  const handleAuth = (e) => {
+  useEffect(() => {
+    if (user && view === 'garages') {
+      fetchGarages();
+    }
+  }, [user, view]);
+
+  useEffect(() => {
+    if (selectedGarage && view === 'garage-detail') {
+      fetchBikes(selectedGarage.id);
+      fetchMembers(selectedGarage.id);
+    }
+  }, [selectedGarage, view]);
+
+  useEffect(() => {
+    if (selectedBike && view === 'bike-detail') {
+      fetchMaintenance(selectedBike.id);
+    }
+  }, [selectedBike, view]);
+
+  const handleAuth = async (e) => {
     e.preventDefault();
+    setAuthError('');
     if (!email || !password) return;
-    
-    const newUser = { id: Date.now(), email, name: email.split('@')[0] };
-    setUser(newUser);
-    localStorage.setItem('garage-user', JSON.stringify(newUser));
-    localStorage.setItem('garage-bikes', JSON.stringify([]));
-    setBikes([]);
+
+    setLoading(true);
+    if (authMode === 'signup') {
+      const { error } = await supabase.auth.signUp({ email, password });
+      if (error) setAuthError(error.message);
+    } else {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) setAuthError(error.message);
+    }
+    setLoading(false);
     setEmail('');
     setPassword('');
-    setView('dashboard');
   };
 
-  // Handle logout
-  const handleLogout = () => {
-    setUser(null);
-    setBikes([]);
-    setSelectedBike(null);
-    localStorage.removeItem('garage-user');
-    localStorage.removeItem('garage-bikes');
-    setView('auth');
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
   };
 
-  // Add new bike
-  const handleAddBike = (e) => {
+  // ============================
+  // GARAGES
+  // ============================
+  const fetchGarages = async () => {
+    setLoading(true);
+    const { data: memberships, error: memErr } = await supabase
+      .from('garage_members')
+      .select('garage_id, role')
+      .eq('user_id', user.id);
+
+    if (memErr || !memberships || memberships.length === 0) {
+      setGarages([]);
+      setLoading(false);
+      return;
+    }
+
+    const garageIds = memberships.map(m => m.garage_id);
+    const { data: garagesData } = await supabase
+      .from('garages')
+      .select('*')
+      .in('id', garageIds);
+
+    // attach bike counts and upcoming maintenance counts
+    const enriched = await Promise.all((garagesData || []).map(async (g) => {
+      const { data: bikesData } = await supabase
+        .from('bikes')
+        .select('id, current_mileage')
+        .eq('garage_id', g.id);
+
+      let upcomingCount = 0;
+      if (bikesData && bikesData.length > 0) {
+        const bikeIds = bikesData.map(b => b.id);
+        const { data: tasksData } = await supabase
+          .from('maintenance_tasks')
+          .select('id, bike_id, due_date, due_mileage, completed')
+          .in('bike_id', bikeIds)
+          .eq('completed', false);
+
+        if (tasksData) {
+          const now = new Date();
+          upcomingCount = tasksData.filter(t => {
+            const bike = bikesData.find(b => b.id === t.bike_id);
+            const dueDate = t.due_date ? new Date(t.due_date) : null;
+            const dueMileageOk = t.due_mileage && bike && t.due_mileage >= bike.current_mileage;
+            return (dueDate && dueDate >= now) || dueMileageOk;
+          }).length;
+        }
+      }
+
+      const myMembership = memberships.find(m => m.garage_id === g.id);
+      return { ...g, bikeCount: bikesData?.length || 0, upcomingCount, myRole: myMembership?.role };
+    }));
+
+    setGarages(enriched);
+    setLoading(false);
+  };
+
+  const handleAddGarage = async (e) => {
+    e.preventDefault();
+    if (!garageName) return;
+    setLoading(true);
+
+    const { error } = await supabase
+      .from('garages')
+      .insert({ name: garageName, location: garageLocation, owner_id: user.id });
+
+    setLoading(false);
+    if (error) {
+      alert('Error creating garage: ' + error.message);
+      return;
+    }
+
+    setGarageName('');
+    setGarageLocation('');
+    setShowAddGarage(false);
+    fetchGarages();
+  };
+
+  const handleJoinGarage = async (e) => {
+    e.preventDefault();
+    setJoinError('');
+    if (!joinCode) return;
+    setLoading(true);
+
+    const { data: garage, error: lookupErr } = await supabase
+      .from('garages')
+      .select('id')
+      .eq('invite_code', joinCode.trim().toLowerCase())
+      .maybeSingle();
+
+    if (lookupErr || !garage) {
+      setJoinError('No garage found with that invite code.');
+      setLoading(false);
+      return;
+    }
+
+    const { error: joinErr } = await supabase
+      .from('garage_members')
+      .insert({ garage_id: garage.id, user_id: user.id, role: 'member' });
+
+    setLoading(false);
+
+    if (joinErr) {
+      if (joinErr.code === '23505') {
+        setJoinError("You're already a member of this garage.");
+      } else {
+        setJoinError('Error joining garage: ' + joinErr.message);
+      }
+      return;
+    }
+
+    setJoinCode('');
+    setShowJoinGarage(false);
+    fetchGarages();
+  };
+
+  const deleteGarage = async (garageId) => {
+    if (!confirm('Delete this garage and all its bikes? This cannot be undone.')) return;
+    setLoading(true);
+    const { error } = await supabase.from('garages').delete().eq('id', garageId);
+    setLoading(false);
+    if (error) {
+      alert('Error deleting garage: ' + error.message);
+      return;
+    }
+    setSelectedGarage(null);
+    setView('garages');
+    fetchGarages();
+  };
+
+  const fetchMembers = async (garageId) => {
+    const { data } = await supabase
+      .from('garage_members')
+      .select('id, user_id, role, joined_at, profiles(email, display_name)')
+      .eq('garage_id', garageId);
+    setGarageMembers(data || []);
+  };
+
+  const removeMember = async (membershipId) => {
+    if (!confirm('Remove this member from the garage?')) return;
+    const { error } = await supabase.from('garage_members').delete().eq('id', membershipId);
+    if (error) {
+      alert('Error removing member: ' + error.message);
+      return;
+    }
+    fetchMembers(selectedGarage.id);
+  };
+
+  const leaveGarage = async () => {
+    if (!confirm('Leave this garage?')) return;
+    const myMembership = garageMembers.find(m => m.user_id === user.id);
+    if (!myMembership) return;
+    const { error } = await supabase.from('garage_members').delete().eq('id', myMembership.id);
+    if (error) {
+      alert('Error leaving garage: ' + error.message);
+      return;
+    }
+    setSelectedGarage(null);
+    setView('garages');
+    fetchGarages();
+  };
+
+  // ============================
+  // BIKES
+  // ============================
+  const fetchBikes = async (garageId) => {
+    setLoading(true);
+    const { data } = await supabase
+      .from('bikes')
+      .select('*, maintenance_tasks(id, completed, due_date, due_mileage)')
+      .eq('garage_id', garageId);
+    setBikes(data || []);
+    setLoading(false);
+  };
+
+  const handleAddBike = async (e) => {
     e.preventDefault();
     if (!bikeName || !bikeYear || !bikeModel || !bikeMileage) return;
-    
-    const newBike = {
-      id: Date.now(),
+    setLoading(true);
+
+    const { error } = await supabase.from('bikes').insert({
+      garage_id: selectedGarage.id,
       name: bikeName,
       year: bikeYear,
       model: bikeModel,
-      currentMileage: parseInt(bikeMileage),
-      maintenance: []
-    };
-    
-    const updatedBikes = [...bikes, newBike];
-    setBikes(updatedBikes);
-    localStorage.setItem('garage-bikes', JSON.stringify(updatedBikes));
+      current_mileage: parseInt(bikeMileage),
+      added_by: user.id
+    });
+
+    setLoading(false);
+    if (error) {
+      alert('Error adding bike: ' + error.message);
+      return;
+    }
+
     setBikeName('');
     setBikeYear('');
     setBikeModel('');
     setBikeMileage('');
     setShowAddBike(false);
+    fetchBikes(selectedGarage.id);
   };
 
-  // Update bike mileage
-  const handleUpdateMileage = (e) => {
+  const handleUpdateMileage = async (e) => {
     e.preventDefault();
     if (!currentMileageInput) return;
-    
-    const updatedBikes = bikes.map(bike => {
-      if (bike.id === selectedBike.id) {
-        return {
-          ...bike,
-          currentMileage: parseInt(currentMileageInput)
-        };
-      }
-      return bike;
-    });
-    
-    setBikes(updatedBikes);
-    localStorage.setItem('garage-bikes', JSON.stringify(updatedBikes));
-    setSelectedBike(updatedBikes.find(b => b.id === selectedBike.id));
+    setLoading(true);
+
+    const { error } = await supabase
+      .from('bikes')
+      .update({ current_mileage: parseInt(currentMileageInput) })
+      .eq('id', selectedBike.id);
+
+    setLoading(false);
+    if (error) {
+      alert('Error updating mileage: ' + error.message);
+      return;
+    }
+
+    setSelectedBike({ ...selectedBike, current_mileage: parseInt(currentMileageInput) });
     setCurrentMileageInput('');
     setShowUpdateMileage(false);
   };
 
-  // Add maintenance task
-  const handleAddMaintenance = (e) => {
+  const deleteBike = async (bikeId) => {
+    if (!confirm('Delete this bike and all its maintenance history? This cannot be undone.')) return;
+    setLoading(true);
+    const { error } = await supabase.from('bikes').delete().eq('id', bikeId);
+    setLoading(false);
+    if (error) {
+      alert('Error deleting bike: ' + error.message);
+      return;
+    }
+    setSelectedBike(null);
+    setView('garage-detail');
+    fetchBikes(selectedGarage.id);
+  };
+
+  // ============================
+  // MAINTENANCE
+  // ============================
+  const fetchMaintenance = async (bikeId) => {
+    setLoading(true);
+    const { data } = await supabase
+      .from('maintenance_tasks')
+      .select('*')
+      .eq('bike_id', bikeId)
+      .order('created_at', { ascending: false });
+    setMaintenanceTasks(data || []);
+    setLoading(false);
+  };
+
+  const handleAddMaintenance = async (e) => {
     e.preventDefault();
     if (!maintenanceTask) return;
-    
-    const updatedBikes = bikes.map(bike => {
-      if (bike.id === selectedBike.id) {
-        return {
-          ...bike,
-          maintenance: [...bike.maintenance, {
-            id: Date.now(),
-            task: maintenanceTask,
-            dueDate: maintenanceDueDate || null,
-            dueMileage: maintenanceDueMileage ? parseInt(maintenanceDueMileage) : null,
-            notes: maintenanceNotes,
-            partsCost: maintenancePartsCost ? parseFloat(maintenancePartsCost) : 0,
-            laborCost: maintenanceLaborCost ? parseFloat(maintenanceLaborCost) : 0,
-            photo: maintenancePhoto,
-            completed: false,
-            completedDate: null,
-            completedMileage: null
-          }]
-        };
-      }
-      return bike;
+    setLoading(true);
+
+    const { error } = await supabase.from('maintenance_tasks').insert({
+      bike_id: selectedBike.id,
+      task: maintenanceTask,
+      due_date: maintenanceDueDate || null,
+      due_mileage: maintenanceDueMileage ? parseInt(maintenanceDueMileage) : null,
+      notes: maintenanceNotes,
+      parts_cost: maintenancePartsCost ? parseFloat(maintenancePartsCost) : 0,
+      labor_cost: maintenanceLaborCost ? parseFloat(maintenanceLaborCost) : 0,
+      photo_url: maintenancePhoto || null,
+      completed: false
     });
-    
-    setBikes(updatedBikes);
-    localStorage.setItem('garage-bikes', JSON.stringify(updatedBikes));
-    setSelectedBike(updatedBikes.find(b => b.id === selectedBike.id));
+
+    setLoading(false);
+    if (error) {
+      alert('Error adding task: ' + error.message);
+      return;
+    }
+
     setMaintenanceTask('');
     setMaintenanceDueDate('');
     setMaintenanceDueMileage('');
@@ -180,9 +433,9 @@ function GarageApp() {
     setMaintenanceLaborCost('');
     setMaintenancePhoto('');
     setShowAddMaintenance(false);
+    fetchMaintenance(selectedBike.id);
   };
 
-  // Handle photo upload
   const handlePhotoUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -194,146 +447,137 @@ function GarageApp() {
     }
   };
 
-  // Apply maintenance template
-  const applyTemplate = (templateKey) => {
+  const applyTemplate = async (templateKey) => {
     const template = MAINTENANCE_TEMPLATES[templateKey];
-    const currentMileage = selectedBike.currentMileage;
-    
+    const currentMileage = selectedBike.current_mileage;
+    setLoading(true);
+
     const newTasks = template.tasks.map(t => ({
-      id: Date.now() + Math.random(),
+      bike_id: selectedBike.id,
       task: t.task,
-      dueDate: null,
-      dueMileage: currentMileage + t.mileageInterval,
-      notes: '',
-      partsCost: t.estimatedCost,
-      laborCost: 0,
-      photo: null,
-      completed: false,
-      completedDate: null,
-      completedMileage: null
+      due_mileage: currentMileage + t.mileageInterval,
+      parts_cost: t.estimatedCost,
+      labor_cost: 0,
+      completed: false
     }));
-    
-    const updatedBikes = bikes.map(bike => {
-      if (bike.id === selectedBike.id) {
-        return {
-          ...bike,
-          maintenance: [...bike.maintenance, ...newTasks]
-        };
-      }
-      return bike;
-    });
-    
-    setBikes(updatedBikes);
-    localStorage.setItem('garage-bikes', JSON.stringify(updatedBikes));
-    setSelectedBike(updatedBikes.find(b => b.id === selectedBike.id));
+
+    const { error } = await supabase.from('maintenance_tasks').insert(newTasks);
+
+    setLoading(false);
+    if (error) {
+      alert('Error applying template: ' + error.message);
+      return;
+    }
+
     setShowTemplates(false);
+    fetchMaintenance(selectedBike.id);
   };
 
-  // Mark maintenance as complete
-  const toggleMaintenanceComplete = (bikeId, maintenanceId) => {
-    const updatedBikes = bikes.map(bike => {
-      if (bike.id === bikeId) {
-        return {
-          ...bike,
-          maintenance: bike.maintenance.map(m => {
-            if (m.id === maintenanceId) {
-              return {
-                ...m,
-                completed: !m.completed,
-                completedDate: !m.completed ? new Date().toISOString().split('T')[0] : null,
-                completedMileage: !m.completed ? selectedBike.currentMileage : null
-              };
-            }
-            return m;
-          })
-        };
-      }
-      return bike;
-    });
-    
-    setBikes(updatedBikes);
-    localStorage.setItem('garage-bikes', JSON.stringify(updatedBikes));
-    if (selectedBike) {
-      setSelectedBike(updatedBikes.find(b => b.id === selectedBike.id));
+  const toggleMaintenanceComplete = async (task) => {
+    const newCompleted = !task.completed;
+    const { error } = await supabase
+      .from('maintenance_tasks')
+      .update({
+        completed: newCompleted,
+        completed_date: newCompleted ? new Date().toISOString().split('T')[0] : null,
+        completed_mileage: newCompleted ? selectedBike.current_mileage : null
+      })
+      .eq('id', task.id);
+
+    if (error) {
+      alert('Error updating task: ' + error.message);
+      return;
     }
+    fetchMaintenance(selectedBike.id);
   };
 
-  // Delete maintenance task
-  const deleteMaintenanceTask = (bikeId, maintenanceId) => {
-    const updatedBikes = bikes.map(bike => {
-      if (bike.id === bikeId) {
-        return {
-          ...bike,
-          maintenance: bike.maintenance.filter(m => m.id !== maintenanceId)
-        };
-      }
-      return bike;
-    });
-    
-    setBikes(updatedBikes);
-    localStorage.setItem('garage-bikes', JSON.stringify(updatedBikes));
-    if (selectedBike) {
-      setSelectedBike(updatedBikes.find(b => b.id === selectedBike.id));
+  const deleteMaintenanceTask = async (taskId) => {
+    if (!confirm('Delete this maintenance task?')) return;
+    const { error } = await supabase.from('maintenance_tasks').delete().eq('id', taskId);
+    if (error) {
+      alert('Error deleting task: ' + error.message);
+      return;
     }
+    fetchMaintenance(selectedBike.id);
   };
 
-  // Delete bike
-  const deleteBike = (bikeId) => {
-    const updatedBikes = bikes.filter(b => b.id !== bikeId);
-    setBikes(updatedBikes);
-    localStorage.setItem('garage-bikes', JSON.stringify(updatedBikes));
-    setSelectedBike(null);
-  };
+  // ============================
+  // HELPERS
+  // ============================
+  const getTotalCost = (task) => (parseFloat(task.parts_cost) || 0) + (parseFloat(task.labor_cost) || 0);
 
-  // Calculate total cost for a task
-  const getTotalCost = (task) => {
-    return (task.partsCost || 0) + (task.laborCost || 0);
-  };
-
-  // Get upcoming maintenance count
-  const getUpcomingCount = (bike) => {
-    return bike.maintenance.filter(m => {
-      if (m.completed) return false;
-      const now = new Date();
-      const dueDate = m.dueDate ? new Date(m.dueDate) : null;
-      const dueMileage = m.dueMileage;
-      
-      return (dueDate && dueDate >= now) || (dueMileage && dueMileage >= bike.currentMileage);
+  const getBikeUpcomingCount = (bike) => {
+    const tasks = bike.maintenance_tasks || [];
+    const now = new Date();
+    return tasks.filter(t => {
+      if (t.completed) return false;
+      const dueDate = t.due_date ? new Date(t.due_date) : null;
+      const dueMileageOk = t.due_mileage && t.due_mileage >= bike.current_mileage;
+      return (dueDate && dueDate >= now) || dueMileageOk;
     }).length;
   };
 
-  // Check if maintenance is due
   const isMaintenanceDue = (task, bike) => {
     if (task.completed) return false;
-    
     const now = new Date();
-    const dueDatePassed = task.dueDate && new Date(task.dueDate) < now;
-    const dueMileagePassed = task.dueMileage && bike.currentMileage >= task.dueMileage;
-    
+    const dueDatePassed = task.due_date && new Date(task.due_date) < now;
+    const dueMileagePassed = task.due_mileage && bike.current_mileage >= task.due_mileage;
     return dueDatePassed || dueMileagePassed;
   };
 
-  // Sort maintenance by due status
-  const sortMaintenance = (maintenance, bike) => {
-    return [...maintenance].sort((a, b) => {
-      const aDue = a.dueMileage ? (a.dueMileage - bike.currentMileage) : 999999;
-      const bDue = b.dueMileage ? (b.dueMileage - bike.currentMileage) : 999999;
+  const sortMaintenance = (tasks, bike) => {
+    return [...tasks].sort((a, b) => {
+      const aDue = a.due_mileage ? (a.due_mileage - bike.current_mileage) : 999999;
+      const bDue = b.due_mileage ? (b.due_mileage - bike.current_mileage) : 999999;
       return aDue - bDue;
     });
   };
 
+  const copyInviteCode = (code) => {
+    navigator.clipboard.writeText(code);
+    alert('Invite code copied: ' + code);
+  };
+
+  // ============================
+  // LOADING / AUTH GATE
+  // ============================
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <p className="text-gray-500">Loading...</p>
+      </div>
+    );
+  }
+
+  // ============================
   // AUTH VIEW
-  if (view === 'auth') {
+  // ============================
+  if (view === 'auth' || !user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-black to-gray-900 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
           <div className="bg-gray-900 border border-gray-800 rounded-lg p-8 shadow-2xl">
             <div className="flex items-center justify-center mb-8">
-              <BikeIcon className="w-12 h-12 text-gray-300 mr-3" />
+              <BikeIcon className="w-12 h-12 text-gray-400 mr-3" />
               <h1 className="text-3xl font-bold text-white">Garage 43</h1>
             </div>
-            <p className="text-gray-500 text-center mb-8 text-sm">Manage your motorcycle maintenance schedule</p>
-            
+            <p className="text-gray-500 text-center mb-8 text-sm">Manage your garages and motorcycle maintenance</p>
+
+            <div className="flex mb-6 bg-gray-800 rounded-lg p-1">
+              <button
+                onClick={() => { setAuthMode('signin'); setAuthError(''); }}
+                className={`flex-1 py-2 rounded text-sm font-semibold transition-colors ${authMode === 'signin' ? 'bg-gray-700 text-white' : 'text-gray-500'}`}
+              >
+                Sign In
+              </button>
+              <button
+                onClick={() => { setAuthMode('signup'); setAuthError(''); }}
+                className={`flex-1 py-2 rounded text-sm font-semibold transition-colors ${authMode === 'signup' ? 'bg-gray-700 text-white' : 'text-gray-500'}`}
+              >
+                Sign Up
+              </button>
+            </div>
+
             <form onSubmit={handleAuth} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-2">Email</label>
@@ -342,7 +586,7 @@ function GarageApp() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
-                  className="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white placeholder-gray-600 focus:outline-none focus:border-gray-600"
+                  className="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white placeholder-gray-600 focus:outline-none focus:border-gray-500"
                 />
               </div>
               <div>
@@ -352,33 +596,38 @@ function GarageApp() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white placeholder-gray-600 focus:outline-none focus:border-gray-600"
+                  className="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white placeholder-gray-600 focus:outline-none focus:border-gray-500"
                 />
               </div>
+              {authError && <p className="text-red-400 text-sm">{authError}</p>}
               <button
                 type="submit"
-                className="w-full bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded transition-colors"
+                disabled={loading}
+                className="w-full bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded transition-colors disabled:opacity-50"
               >
-                Sign In / Sign Up
+                {loading ? 'Please wait...' : authMode === 'signup' ? 'Create Account' : 'Sign In'}
               </button>
             </form>
-            
-            <p className="text-gray-600 text-xs text-center mt-6">Demo: Use any email and password to get started</p>
+
+            {authMode === 'signup' && (
+              <p className="text-gray-600 text-xs text-center mt-6">Check your email to confirm your account after signing up.</p>
+            )}
           </div>
         </div>
       </div>
     );
   }
 
-  // DASHBOARD VIEW
-  if (view === 'dashboard') {
+  // ============================
+  // GARAGES LIST VIEW
+  // ============================
+  if (view === 'garages') {
     return (
       <div className="min-h-screen bg-black">
-        {/* Header */}
         <div className="bg-gray-900 border-b border-gray-800 shadow-lg">
           <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
             <div className="flex items-center">
-              <BikeIcon className="w-8 h-8 text-gray-300 mr-3" />
+              <BikeIcon className="w-8 h-8 text-gray-400 mr-3" />
               <h1 className="text-2xl font-bold text-white">Garage 43</h1>
             </div>
             <div className="flex items-center space-x-4">
@@ -394,10 +643,293 @@ function GarageApp() {
           </div>
         </div>
 
-        {/* Main Content */}
+        <div className="max-w-6xl mx-auto px-4 py-8">
+          <div className="flex items-center justify-between mb-8 flex-wrap gap-3">
+            <h2 className="text-3xl font-bold text-white">Your Garages</h2>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowJoinGarage(true)}
+                className="flex items-center space-x-2 bg-gray-800 hover:bg-gray-700 text-gray-200 px-4 py-2 rounded font-semibold transition-colors"
+              >
+                <KeyRound className="w-4 h-4" />
+                <span>Join Garage</span>
+              </button>
+              <button
+                onClick={() => setShowAddGarage(true)}
+                className="flex items-center space-x-2 bg-gray-700 hover:bg-gray-600 text-white px-6 py-2 rounded font-semibold transition-colors"
+              >
+                <Plus className="w-5 h-5" />
+                <span>Add Garage</span>
+              </button>
+            </div>
+          </div>
+
+          {showAddGarage && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+              <div className="bg-gray-900 border border-gray-800 rounded-lg p-8 w-full max-w-md">
+                <h3 className="text-2xl font-bold text-white mb-6">Add New Garage</h3>
+                <form onSubmit={handleAddGarage} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-2">Garage Name</label>
+                    <input
+                      type="text"
+                      value={garageName}
+                      onChange={(e) => setGarageName(e.target.value)}
+                      placeholder="e.g., Home Garage"
+                      className="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white placeholder-gray-600 focus:outline-none focus:border-gray-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-2">Location (optional)</label>
+                    <input
+                      type="text"
+                      value={garageLocation}
+                      onChange={(e) => setGarageLocation(e.target.value)}
+                      placeholder="e.g., Menomonee Falls, WI"
+                      className="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white placeholder-gray-600 focus:outline-none focus:border-gray-500"
+                    />
+                  </div>
+                  <div className="flex gap-3 mt-6">
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded transition-colors disabled:opacity-50"
+                    >
+                      {loading ? 'Creating...' : 'Create Garage'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddGarage(false)}
+                      className="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-200 font-semibold py-2 px-4 rounded transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {showJoinGarage && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+              <div className="bg-gray-900 border border-gray-800 rounded-lg p-8 w-full max-w-md">
+                <h3 className="text-2xl font-bold text-white mb-2">Join a Garage</h3>
+                <p className="text-gray-500 text-sm mb-6">Enter the invite code someone shared with you.</p>
+                <form onSubmit={handleJoinGarage} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-2">Invite Code</label>
+                    <input
+                      type="text"
+                      value={joinCode}
+                      onChange={(e) => setJoinCode(e.target.value)}
+                      placeholder="e.g., a1b2c3d4"
+                      className="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white placeholder-gray-600 focus:outline-none focus:border-gray-500"
+                    />
+                  </div>
+                  {joinError && <p className="text-red-400 text-sm">{joinError}</p>}
+                  <div className="flex gap-3 mt-6">
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded transition-colors disabled:opacity-50"
+                    >
+                      {loading ? 'Joining...' : 'Join Garage'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setShowJoinGarage(false); setJoinError(''); setJoinCode(''); }}
+                      className="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-200 font-semibold py-2 px-4 rounded transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {garages.length === 0 ? (
+            <div className="text-center py-16">
+              <Warehouse className="w-16 h-16 text-gray-700 mx-auto mb-4" />
+              <p className="text-gray-500 text-lg mb-6">No garages yet. Create one or join with an invite code.</p>
+              <div className="flex gap-3 justify-center">
+                <button
+                  onClick={() => setShowAddGarage(true)}
+                  className="inline-flex items-center space-x-2 bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded font-semibold transition-colors"
+                >
+                  <Plus className="w-5 h-5" />
+                  <span>Add Garage</span>
+                </button>
+                <button
+                  onClick={() => setShowJoinGarage(true)}
+                  className="inline-flex items-center space-x-2 bg-gray-800 hover:bg-gray-700 text-gray-200 px-6 py-3 rounded font-semibold transition-colors"
+                >
+                  <KeyRound className="w-5 h-5" />
+                  <span>Join Garage</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {garages.map(garage => (
+                <div
+                  key={garage.id}
+                  onClick={() => {
+                    setSelectedGarage(garage);
+                    setView('garage-detail');
+                  }}
+                  className="bg-gray-900 border border-gray-800 rounded-lg p-6 hover:border-gray-600 hover:shadow-lg transition-all cursor-pointer group"
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <h3 className="text-xl font-bold text-white">{garage.name}</h3>
+                      {garage.location && <p className="text-gray-500 text-sm">{garage.location}</p>}
+                    </div>
+                    <Warehouse className="w-8 h-8 text-gray-400 group-hover:text-gray-300" />
+                  </div>
+
+                  {garage.myRole === 'owner' && (
+                    <span className="inline-block bg-gray-800 text-gray-400 text-xs px-2 py-1 rounded mb-3">Owner</span>
+                  )}
+
+                  <div className="flex items-center justify-between pt-4 border-t border-gray-800">
+                    <div className="flex items-center space-x-2">
+                      <BikeIcon className="w-4 h-4 text-gray-500" />
+                      <span className="text-gray-400 text-sm">{garage.bikeCount} bike{garage.bikeCount !== 1 ? 's' : ''}</span>
+                    </div>
+                    {garage.upcomingCount > 0 ? (
+                      <div className="flex items-center space-x-2">
+                        <AlertCircle className="w-4 h-4 text-yellow-400" />
+                        <span className="text-yellow-400 text-sm font-medium">{garage.upcomingCount} due</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center space-x-2">
+                        <CheckCircle2 className="w-4 h-4 text-green-400" />
+                        <span className="text-green-400 text-sm font-medium">All current</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ============================
+  // GARAGE DETAIL VIEW
+  // ============================
+  if (view === 'garage-detail' && selectedGarage) {
+    const isOwner = selectedGarage.myRole === 'owner';
+
+    return (
+      <div className="min-h-screen bg-black">
+        <div className="bg-gray-900 border-b border-gray-800 shadow-lg">
+          <div className="max-w-6xl mx-auto px-4 py-4">
+            <button
+              onClick={() => {
+                setView('garages');
+                setSelectedGarage(null);
+              }}
+              className="flex items-center space-x-2 text-gray-500 hover:text-white transition-colors mb-4"
+            >
+              <span>← Your Garages</span>
+            </button>
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center space-x-3">
+                <Warehouse className="w-7 h-7 text-gray-400" />
+                <div>
+                  <h1 className="text-3xl font-bold text-white">{selectedGarage.name}</h1>
+                  {selectedGarage.location && <p className="text-gray-500">{selectedGarage.location}</p>}
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setShowMembers(true)}
+                  className="flex items-center space-x-2 bg-gray-800 hover:bg-gray-700 text-gray-200 px-4 py-2 rounded text-sm font-medium transition-colors"
+                >
+                  <Users className="w-4 h-4" />
+                  <span>Members</span>
+                </button>
+                {isOwner ? (
+                  <button
+                    onClick={() => deleteGarage(selectedGarage.id)}
+                    className="text-red-400 hover:text-red-300 text-sm font-medium transition-colors"
+                  >
+                    Delete Garage
+                  </button>
+                ) : (
+                  <button
+                    onClick={leaveGarage}
+                    className="text-red-400 hover:text-red-300 text-sm font-medium transition-colors"
+                  >
+                    Leave Garage
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Members Modal */}
+        {showMembers && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-gray-900 border border-gray-800 rounded-lg p-8 w-full max-w-md">
+              <h3 className="text-2xl font-bold text-white mb-2">Garage Members</h3>
+
+              <div className="bg-gray-800 rounded-lg p-4 mb-6">
+                <p className="text-gray-500 text-xs mb-1">Invite Code</p>
+                <div className="flex items-center justify-between">
+                  <code className="text-white font-mono text-lg">{selectedGarage.invite_code}</code>
+                  <button
+                    onClick={() => copyInviteCode(selectedGarage.invite_code)}
+                    className="flex items-center space-x-1 text-gray-300 hover:text-white text-sm"
+                  >
+                    <Copy className="w-4 h-4" />
+                    <span>Copy</span>
+                  </button>
+                </div>
+                <p className="text-gray-600 text-xs mt-2">Share this code so others can join this garage.</p>
+              </div>
+
+              <div className="space-y-2 mb-6 max-h-64 overflow-y-auto">
+                {garageMembers.map(m => (
+                  <div key={m.id} className="flex items-center justify-between bg-gray-800 rounded px-4 py-3">
+                    <div>
+                      <p className="text-white text-sm font-medium">
+                        {m.profiles?.display_name || m.profiles?.email}
+                        {m.user_id === user.id && <span className="text-gray-500"> (you)</span>}
+                      </p>
+                      <p className="text-gray-500 text-xs capitalize">{m.role}</p>
+                    </div>
+                    {isOwner && m.user_id !== user.id && (
+                      <button
+                        onClick={() => removeMember(m.id)}
+                        className="text-gray-500 hover:text-red-400 transition-colors"
+                        title="Remove member"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <button
+                onClick={() => setShowMembers(false)}
+                className="w-full bg-gray-800 hover:bg-gray-700 text-gray-200 font-semibold py-2 px-4 rounded transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="max-w-6xl mx-auto px-4 py-8">
           <div className="flex items-center justify-between mb-8">
-            <h2 className="text-3xl font-bold text-white">My Garage</h2>
+            <h2 className="text-2xl font-bold text-white">Bikes in this Garage</h2>
             <button
               onClick={() => setShowAddBike(true)}
               className="flex items-center space-x-2 bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded font-semibold transition-colors"
@@ -407,7 +939,6 @@ function GarageApp() {
             </button>
           </div>
 
-          {/* Add Bike Modal */}
           {showAddBike && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
               <div className="bg-gray-900 border border-gray-800 rounded-lg p-8 w-full max-w-md">
@@ -420,7 +951,7 @@ function GarageApp() {
                       value={bikeName}
                       onChange={(e) => setBikeName(e.target.value)}
                       placeholder="e.g., Road King"
-                      className="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white placeholder-gray-600 focus:outline-none focus:border-gray-600"
+                      className="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white placeholder-gray-600 focus:outline-none focus:border-gray-500"
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
@@ -431,7 +962,7 @@ function GarageApp() {
                         value={bikeYear}
                         onChange={(e) => setBikeYear(e.target.value)}
                         placeholder="2023"
-                        className="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white placeholder-gray-600 focus:outline-none focus:border-gray-600"
+                        className="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white placeholder-gray-600 focus:outline-none focus:border-gray-500"
                       />
                     </div>
                     <div>
@@ -441,7 +972,7 @@ function GarageApp() {
                         value={bikeModel}
                         onChange={(e) => setBikeModel(e.target.value)}
                         placeholder="FLHRI"
-                        className="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white placeholder-gray-600 focus:outline-none focus:border-gray-600"
+                        className="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white placeholder-gray-600 focus:outline-none focus:border-gray-500"
                       />
                     </div>
                   </div>
@@ -452,15 +983,16 @@ function GarageApp() {
                       value={bikeMileage}
                       onChange={(e) => setBikeMileage(e.target.value)}
                       placeholder="0"
-                      className="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white placeholder-gray-600 focus:outline-none focus:border-gray-600"
+                      className="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white placeholder-gray-600 focus:outline-none focus:border-gray-500"
                     />
                   </div>
                   <div className="flex gap-3 mt-6">
                     <button
                       type="submit"
-                      className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded transition-colors"
+                      disabled={loading}
+                      className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded transition-colors disabled:opacity-50"
                     >
-                      Create Bike
+                      {loading ? 'Creating...' : 'Create Bike'}
                     </button>
                     <button
                       type="button"
@@ -475,11 +1007,10 @@ function GarageApp() {
             </div>
           )}
 
-          {/* Bikes Grid */}
           {bikes.length === 0 ? (
             <div className="text-center py-16">
               <BikeIcon className="w-16 h-16 text-gray-700 mx-auto mb-4" />
-              <p className="text-gray-500 text-lg mb-6">No bikes yet. Add your first bike to get started.</p>
+              <p className="text-gray-500 text-lg mb-6">No bikes in this garage yet.</p>
               <button
                 onClick={() => setShowAddBike(true)}
                 className="inline-flex items-center space-x-2 bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded font-semibold transition-colors"
@@ -491,11 +1022,8 @@ function GarageApp() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {bikes.map(bike => {
-                const upcomingCount = getUpcomingCount(bike);
-                const totalCost = bike.maintenance
-                  .filter(m => m.completed)
-                  .reduce((sum, m) => sum + getTotalCost(m), 0);
-                
+                const upcomingCount = getBikeUpcomingCount(bike);
+
                 return (
                   <div
                     key={bike.id}
@@ -503,35 +1031,32 @@ function GarageApp() {
                       setSelectedBike(bike);
                       setView('bike-detail');
                     }}
-                    className="bg-gray-900 border border-gray-800 rounded-lg p-6 hover:border-gray-700 hover:shadow-lg transition-all cursor-pointer group"
+                    className="bg-gray-900 border border-gray-800 rounded-lg p-6 hover:border-gray-600 hover:shadow-lg transition-all cursor-pointer group"
                   >
                     <div className="flex items-start justify-between mb-4">
                       <div>
                         <h3 className="text-xl font-bold text-white">{bike.year} {bike.name}</h3>
                         <p className="text-gray-500 text-sm">{bike.model}</p>
                       </div>
-                      <BikeIcon className="w-8 h-8 text-gray-300 group-hover:text-gray-200" />
+                      <BikeIcon className="w-8 h-8 text-gray-400 group-hover:text-gray-300" />
                     </div>
-                    
+
                     <div className="bg-gray-800 rounded px-3 py-2 mb-4">
-                      <p className="text-gray-400 text-sm font-semibold">{bike.currentMileage.toLocaleString()} mi</p>
+                      <p className="text-gray-300 text-sm font-semibold">{bike.current_mileage.toLocaleString()} mi</p>
                     </div>
-                    
+
                     <div className="flex items-center justify-between pt-4 border-t border-gray-800">
-                      <div>
-                        {upcomingCount > 0 ? (
-                          <div className="flex items-center space-x-2">
-                            <AlertCircle className="w-4 h-4 text-yellow-400" />
-                            <span className="text-yellow-400 text-sm font-medium">{upcomingCount} due</span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center space-x-2">
-                            <CheckCircle2 className="w-4 h-4 text-green-400" />
-                            <span className="text-green-400 text-sm font-medium">All current</span>
-                          </div>
-                        )}
-                      </div>
-                      <span className="text-gray-600 text-xs">${totalCost.toFixed(0)}</span>
+                      {upcomingCount > 0 ? (
+                        <div className="flex items-center space-x-2">
+                          <AlertCircle className="w-4 h-4 text-yellow-400" />
+                          <span className="text-yellow-400 text-sm font-medium">{upcomingCount} due</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center space-x-2">
+                          <CheckCircle2 className="w-4 h-4 text-green-400" />
+                          <span className="text-green-400 text-sm font-medium">All current</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -543,46 +1068,58 @@ function GarageApp() {
     );
   }
 
+  // ============================
   // BIKE DETAIL VIEW
-  if (view === 'bike-detail' && selectedBike) {
+  // ============================
+  if (view === 'bike-detail' && selectedBike && selectedGarage) {
     const upcomingMaintenance = sortMaintenance(
-      selectedBike.maintenance.filter(m => !m.completed),
+      maintenanceTasks.filter(m => !m.completed),
       selectedBike
     );
     const completedMaintenance = sortMaintenance(
-      selectedBike.maintenance.filter(m => m.completed),
+      maintenanceTasks.filter(m => m.completed),
       selectedBike
     );
-    
-    const totalSpent = selectedBike.maintenance
+
+    const totalSpent = maintenanceTasks
       .filter(m => m.completed)
       .reduce((sum, m) => sum + getTotalCost(m), 0);
 
     return (
       <div className="min-h-screen bg-black">
-        {/* Header */}
         <div className="bg-gray-900 border-b border-gray-800 shadow-lg">
           <div className="max-w-6xl mx-auto px-4 py-4">
-            <button
-              onClick={() => {
-                setView('dashboard');
-                setSelectedBike(null);
-              }}
-              className="flex items-center space-x-2 text-gray-500 hover:text-white transition-colors mb-4"
-            >
-              <span>← Back to Garage</span>
-            </button>
+            <div className="flex items-center text-sm text-gray-500 mb-4 space-x-2 flex-wrap">
+              <button
+                onClick={() => {
+                  setView('garages');
+                  setSelectedGarage(null);
+                  setSelectedBike(null);
+                }}
+                className="hover:text-white transition-colors"
+              >
+                Your Garages
+              </button>
+              <ChevronRight className="w-4 h-4" />
+              <button
+                onClick={() => {
+                  setView('garage-detail');
+                  setSelectedBike(null);
+                }}
+                className="hover:text-white transition-colors"
+              >
+                {selectedGarage.name}
+              </button>
+              <ChevronRight className="w-4 h-4" />
+              <span className="text-gray-300">{selectedBike.name}</span>
+            </div>
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-3xl font-bold text-white">{selectedBike.year} {selectedBike.name}</h1>
                 <p className="text-gray-500">{selectedBike.model}</p>
               </div>
               <button
-                onClick={() => {
-                  deleteBike(selectedBike.id);
-                  setView('dashboard');
-                  setSelectedBike(null);
-                }}
+                onClick={() => deleteBike(selectedBike.id)}
                 className="text-red-400 hover:text-red-300 text-sm font-medium transition-colors"
               >
                 Delete Bike
@@ -591,45 +1128,43 @@ function GarageApp() {
           </div>
         </div>
 
-        {/* Stats Bar */}
         <div className="bg-gray-900 border-b border-gray-800 px-4 py-6">
           <div className="max-w-6xl mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <div className="bg-gray-800 rounded-lg p-4">
                 <p className="text-gray-500 text-sm mb-1">Current Mileage</p>
                 <div className="flex items-end justify-between">
-                  <p className="text-white font-bold text-2xl">{selectedBike.currentMileage.toLocaleString()}</p>
+                  <p className="text-white font-bold text-2xl">{selectedBike.current_mileage.toLocaleString()}</p>
                   <button
                     onClick={() => {
-                      setCurrentMileageInput(selectedBike.currentMileage.toString());
+                      setCurrentMileageInput(selectedBike.current_mileage.toString());
                       setShowUpdateMileage(true);
                     }}
-                    className="text-gray-300 hover:text-gray-200 text-xs font-semibold"
+                    className="text-gray-300 hover:text-white text-xs font-semibold"
                   >
                     Update
                   </button>
                 </div>
               </div>
-              
+
               <div className="bg-gray-800 rounded-lg p-4">
                 <p className="text-gray-500 text-sm mb-1">Maintenance Due</p>
                 <p className="text-yellow-400 font-bold text-2xl">{upcomingMaintenance.length}</p>
               </div>
-              
+
               <div className="bg-gray-800 rounded-lg p-4">
                 <p className="text-gray-500 text-sm mb-1">Total Maintenance Cost</p>
                 <p className="text-green-400 font-bold text-2xl">${totalSpent.toFixed(0)}</p>
               </div>
-              
+
               <div className="bg-gray-800 rounded-lg p-4">
                 <p className="text-gray-500 text-sm mb-1">Total Tasks</p>
-                <p className="text-gray-300 font-bold text-2xl">{selectedBike.maintenance.length}</p>
+                <p className="text-gray-300 font-bold text-2xl">{maintenanceTasks.length}</p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Update Mileage Modal */}
         {showUpdateMileage && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
             <div className="bg-gray-900 border border-gray-800 rounded-lg p-8 w-full max-w-md">
@@ -641,15 +1176,16 @@ function GarageApp() {
                     type="number"
                     value={currentMileageInput}
                     onChange={(e) => setCurrentMileageInput(e.target.value)}
-                    className="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white focus:outline-none focus:border-gray-600"
+                    className="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white focus:outline-none focus:border-gray-500"
                   />
                 </div>
                 <div className="flex gap-3 mt-6">
                   <button
                     type="submit"
-                    className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded transition-colors"
+                    disabled={loading}
+                    className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded transition-colors disabled:opacity-50"
                   >
-                    Update
+                    {loading ? 'Updating...' : 'Update'}
                   </button>
                   <button
                     type="button"
@@ -664,7 +1200,6 @@ function GarageApp() {
           </div>
         )}
 
-        {/* Templates Modal */}
         {showTemplates && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
             <div className="bg-gray-900 border border-gray-800 rounded-lg p-8 w-full max-w-md">
@@ -692,7 +1227,6 @@ function GarageApp() {
           </div>
         )}
 
-        {/* Main Content */}
         <div className="max-w-6xl mx-auto px-4 py-8">
           <div className="flex items-center justify-between mb-8">
             <h2 className="text-2xl font-bold text-white">Maintenance Schedule</h2>
@@ -714,7 +1248,6 @@ function GarageApp() {
             </div>
           </div>
 
-          {/* Add Maintenance Modal */}
           {showAddMaintenance && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
               <div className="bg-gray-900 border border-gray-800 rounded-lg p-8 w-full max-w-2xl my-8">
@@ -727,7 +1260,7 @@ function GarageApp() {
                       value={maintenanceTask}
                       onChange={(e) => setMaintenanceTask(e.target.value)}
                       placeholder="e.g., Oil change"
-                      className="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white placeholder-gray-600 focus:outline-none focus:border-gray-600"
+                      className="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white placeholder-gray-600 focus:outline-none focus:border-gray-500"
                       required
                     />
                   </div>
@@ -739,7 +1272,7 @@ function GarageApp() {
                         type="date"
                         value={maintenanceDueDate}
                         onChange={(e) => setMaintenanceDueDate(e.target.value)}
-                        className="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white focus:outline-none focus:border-gray-600"
+                        className="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white focus:outline-none focus:border-gray-500"
                       />
                     </div>
                     <div>
@@ -749,7 +1282,7 @@ function GarageApp() {
                         value={maintenanceDueMileage}
                         onChange={(e) => setMaintenanceDueMileage(e.target.value)}
                         placeholder="e.g., 5000"
-                        className="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white placeholder-gray-600 focus:outline-none focus:border-gray-600"
+                        className="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white placeholder-gray-600 focus:outline-none focus:border-gray-500"
                       />
                     </div>
                   </div>
@@ -765,7 +1298,7 @@ function GarageApp() {
                           onChange={(e) => setMaintenancePartsCost(e.target.value)}
                           placeholder="0.00"
                           step="0.01"
-                          className="flex-1 bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white placeholder-gray-600 focus:outline-none focus:border-gray-600"
+                          className="flex-1 bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white placeholder-gray-600 focus:outline-none focus:border-gray-500"
                         />
                       </div>
                     </div>
@@ -779,7 +1312,7 @@ function GarageApp() {
                           onChange={(e) => setMaintenanceLaborCost(e.target.value)}
                           placeholder="0.00"
                           step="0.01"
-                          className="flex-1 bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white placeholder-gray-600 focus:outline-none focus:border-gray-600"
+                          className="flex-1 bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white placeholder-gray-600 focus:outline-none focus:border-gray-500"
                         />
                       </div>
                     </div>
@@ -791,7 +1324,7 @@ function GarageApp() {
                       value={maintenanceNotes}
                       onChange={(e) => setMaintenanceNotes(e.target.value)}
                       placeholder="Technician notes, parts used, etc."
-                      className="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white placeholder-gray-600 focus:outline-none focus:border-gray-600 resize-none"
+                      className="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white placeholder-gray-600 focus:outline-none focus:border-gray-500 resize-none"
                       rows="3"
                     />
                   </div>
@@ -811,14 +1344,16 @@ function GarageApp() {
                         <img src={maintenancePhoto} alt="preview" className="w-full h-40 object-cover rounded" />
                       </div>
                     )}
+                    <p className="text-gray-600 text-xs mt-2">Note: photos are stored as embedded data for now. For production use, set up Supabase Storage.</p>
                   </div>
 
                   <div className="flex gap-3 mt-6">
                     <button
                       type="submit"
-                      className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded transition-colors"
+                      disabled={loading}
+                      className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded transition-colors disabled:opacity-50"
                     >
-                      Add Task
+                      {loading ? 'Adding...' : 'Add Task'}
                     </button>
                     <button
                       type="button"
@@ -836,13 +1371,12 @@ function GarageApp() {
             </div>
           )}
 
-          {/* Upcoming Maintenance */}
           <div className="mb-12">
             <h3 className="text-xl font-bold text-white mb-4 flex items-center space-x-2">
               <AlertCircle className="w-5 h-5 text-yellow-400" />
               <span>Maintenance Due ({upcomingMaintenance.length})</span>
             </h3>
-            
+
             {upcomingMaintenance.length === 0 ? (
               <div className="bg-gray-900 border border-gray-800 rounded-lg p-8 text-center">
                 <CheckCircle2 className="w-12 h-12 text-green-400 mx-auto mb-4" />
@@ -852,8 +1386,8 @@ function GarageApp() {
               <div className="space-y-3">
                 {upcomingMaintenance.map(task => {
                   const isDue = isMaintenanceDue(task, selectedBike);
-                  const mileageUntilDue = task.dueMileage ? task.dueMileage - selectedBike.currentMileage : null;
-                  
+                  const mileageUntilDue = task.due_mileage ? task.due_mileage - selectedBike.current_mileage : null;
+
                   return (
                     <div
                       key={task.id}
@@ -864,53 +1398,50 @@ function GarageApp() {
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex-1">
                           <h4 className="text-white font-semibold mb-2">{task.task}</h4>
-                          
-                          {/* Due info */}
+
                           <div className="flex flex-wrap gap-3 mb-2">
-                            {task.dueMileage && (
+                            {task.due_mileage && (
                               <div className={`text-sm ${isDue ? 'text-red-400' : 'text-gray-500'}`}>
-                                <span className="font-semibold">Mileage:</span> {task.dueMileage.toLocaleString()} mi
-                                {mileageUntilDue && (
+                                <span className="font-semibold">Mileage:</span> {task.due_mileage.toLocaleString()} mi
+                                {mileageUntilDue !== null && (
                                   <span className={mileageUntilDue < 0 ? 'text-red-400 ml-2' : 'text-gray-600 ml-2'}>
                                     ({mileageUntilDue > 0 ? '+' : ''}{mileageUntilDue.toLocaleString()} mi)
                                   </span>
                                 )}
                               </div>
                             )}
-                            {task.dueDate && (
+                            {task.due_date && (
                               <div className={`text-sm ${isDue ? 'text-red-400' : 'text-gray-500'}`}>
-                                <span className="font-semibold">Date:</span> {new Date(task.dueDate).toLocaleDateString()}
+                                <span className="font-semibold">Date:</span> {new Date(task.due_date).toLocaleDateString()}
                               </div>
                             )}
                           </div>
 
-                          {/* Cost info */}
                           {getTotalCost(task) > 0 && (
                             <div className="text-sm text-gray-500 mb-2">
                               <DollarSign className="w-4 h-4 inline mr-1" />
-                              {task.partsCost > 0 && <span>Parts: ${task.partsCost.toFixed(2)} </span>}
-                              {task.laborCost > 0 && <span>Labor: ${task.laborCost.toFixed(2)} </span>}
+                              {task.parts_cost > 0 && <span>Parts: ${parseFloat(task.parts_cost).toFixed(2)} </span>}
+                              {task.labor_cost > 0 && <span>Labor: ${parseFloat(task.labor_cost).toFixed(2)} </span>}
                               <span className="font-semibold">Total: ${getTotalCost(task).toFixed(2)}</span>
                             </div>
                           )}
 
-                          {/* Notes and photos */}
                           {task.notes && <p className="text-gray-500 text-sm mb-2">{task.notes}</p>}
-                          {task.photo && (
-                            <img src={task.photo} alt={task.task} className="w-full h-32 object-cover rounded mt-2 mb-2" />
+                          {task.photo_url && (
+                            <img src={task.photo_url} alt={task.task} className="w-full h-32 object-cover rounded mt-2 mb-2" />
                           )}
                         </div>
-                        
+
                         <div className="flex items-center space-x-2 ml-4">
                           <button
-                            onClick={() => toggleMaintenanceComplete(selectedBike.id, task.id)}
+                            onClick={() => toggleMaintenanceComplete(task)}
                             className="text-gray-500 hover:text-green-400 transition-colors"
                             title="Mark complete"
                           >
                             <CheckCircle2 className="w-6 h-6" />
                           </button>
                           <button
-                            onClick={() => deleteMaintenanceTask(selectedBike.id, task.id)}
+                            onClick={() => deleteMaintenanceTask(task.id)}
                             className="text-gray-500 hover:text-red-400 transition-colors"
                             title="Delete task"
                           >
@@ -925,14 +1456,13 @@ function GarageApp() {
             )}
           </div>
 
-          {/* Completed Maintenance */}
           {completedMaintenance.length > 0 && (
             <div>
               <h3 className="text-xl font-bold text-white mb-4 flex items-center space-x-2">
                 <CheckCircle2 className="w-5 h-5 text-green-400" />
                 <span>Service History ({completedMaintenance.length})</span>
               </h3>
-              
+
               <div className="space-y-3">
                 {completedMaintenance.map(task => (
                   <div
@@ -941,15 +1471,15 @@ function GarageApp() {
                   >
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1">
-                        <h4 className="text-gray-400 font-semibold mb-2">{task.task}</h4>
-                        
+                        <h4 className="text-gray-300 font-semibold mb-2">{task.task}</h4>
+
                         <div className="flex flex-wrap gap-3 mb-2">
                           <div className="text-sm text-gray-600">
-                            <span className="font-semibold">Completed:</span> {new Date(task.completedDate).toLocaleDateString()}
+                            <span className="font-semibold">Completed:</span> {new Date(task.completed_date).toLocaleDateString()}
                           </div>
-                          {task.completedMileage && (
+                          {task.completed_mileage && (
                             <div className="text-sm text-gray-600">
-                              <span className="font-semibold">Mileage:</span> {task.completedMileage.toLocaleString()} mi
+                              <span className="font-semibold">Mileage:</span> {task.completed_mileage.toLocaleString()} mi
                             </div>
                           )}
                         </div>
@@ -962,21 +1492,21 @@ function GarageApp() {
                         )}
 
                         {task.notes && <p className="text-gray-700 text-sm mb-2">{task.notes}</p>}
-                        {task.photo && (
-                          <img src={task.photo} alt={task.task} className="w-full h-32 object-cover rounded mt-2" />
+                        {task.photo_url && (
+                          <img src={task.photo_url} alt={task.task} className="w-full h-32 object-cover rounded mt-2" />
                         )}
                       </div>
-                      
+
                       <div className="flex items-center space-x-2 ml-4">
                         <button
-                          onClick={() => toggleMaintenanceComplete(selectedBike.id, task.id)}
+                          onClick={() => toggleMaintenanceComplete(task)}
                           className="text-gray-700 hover:text-yellow-400 transition-colors"
                           title="Mark incomplete"
                         >
                           <CheckCircle2 className="w-6 h-6" />
                         </button>
                         <button
-                          onClick={() => deleteMaintenanceTask(selectedBike.id, task.id)}
+                          onClick={() => deleteMaintenanceTask(task.id)}
                           className="text-gray-700 hover:text-red-400 transition-colors"
                           title="Delete task"
                         >
@@ -993,6 +1523,8 @@ function GarageApp() {
       </div>
     );
   }
+
+  return null;
 }
 
 export default GarageApp;
