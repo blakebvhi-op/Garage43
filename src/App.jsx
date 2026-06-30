@@ -236,8 +236,16 @@ function GarageApp() {
   };
 
   const updateMemberRole = async (membershipId, newRole) => {
-    const { error } = await supabase.from('garage_members').update({ role: newRole }).eq('id', membershipId);
-    if (error) { alert('Error: ' + error.message); return; }
+    const { data, error } = await supabase
+      .from('garage_members')
+      .update({ role: newRole })
+      .eq('id', membershipId)
+      .select();
+    if (error) { alert('Error updating role: ' + error.message); return; }
+    if (!data || data.length === 0) {
+      alert('Update blocked — no rows matched. This is likely an RLS policy issue. Check the Supabase SQL Editor.');
+      return;
+    }
     fetchMembers(selectedGarage.id);
   };
 
