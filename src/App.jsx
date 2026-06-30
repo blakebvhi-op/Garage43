@@ -6,6 +6,7 @@ import {
   ArrowLeftRight, ShieldCheck, Clock
 } from 'lucide-react';
 import { supabase } from './supabaseClient';
+import GarageDashboard from './GarageDashboard';
 
 const MAINTENANCE_TEMPLATES = {
   harley: {
@@ -230,6 +231,15 @@ function GarageApp() {
     const me = garageMembers.find(m => m.user_id === user.id);
     if (me) await supabase.from('garage_members').delete().eq('id', me.id);
     setSelectedGarage(null); setView('garages'); fetchGarages();
+  };
+
+  const saveDashboardLayout = async (layout) => {
+    const { error } = await supabase
+      .from('garages')
+      .update({ dashboard_layout: layout })
+      .eq('id', selectedGarage.id);
+    if (error) { alert('Error saving layout: ' + error.message); return; }
+    setSelectedGarage(prev => ({ ...prev, dashboard_layout: layout }));
   };
 
   const transferOwnership = async () => {
@@ -638,7 +648,7 @@ function GarageApp() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {garages.map(garage => (
               <div key={garage.id}
-                onClick={() => { setSelectedGarage(garage); setMyRole(garage.myRole); setActiveTab('bikes'); setView('garage-dashboard'); }}
+                onClick={() => { setSelectedGarage(garage); setMyRole(garage.myRole); setActiveTab('dashboard'); setView('garage-dashboard'); }}
                 className="bg-gray-900 border border-gray-800 rounded-lg p-6 hover:border-gray-600 transition-all cursor-pointer group">
                 <div className="flex items-start justify-between mb-4">
                   <div>
@@ -666,6 +676,7 @@ function GarageApp() {
     const pendingCount = liftBookings.filter(b => b.status === 'pending').length;
 
     const TABS = [
+      { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
       { id: 'bikes', label: 'Bikes', icon: BikeIcon },
       { id: 'schedule', label: 'Schedule', icon: Calendar, badge: isPrivileged && pendingCount > 0 ? pendingCount : null },
       { id: 'board', label: 'Board', icon: MessageSquare },
@@ -720,6 +731,21 @@ function GarageApp() {
         </div>
 
         <div className="max-w-6xl mx-auto px-4 py-8">
+
+          {/* ── DASHBOARD TAB ── */}
+          {activeTab === 'dashboard' && (
+            <GarageDashboard
+              garage={selectedGarage}
+              myRole={myRole}
+              bikes={bikes}
+              liftBookings={liftBookings}
+              posts={posts}
+              members={garageMembers}
+              onBikeClick={(bike) => { setSelectedBike(bike); setView('bike-detail'); }}
+              onViewBoard={() => setActiveTab('board')}
+              onLayoutSave={saveDashboardLayout}
+            />
+          )}
 
           {/* ── BIKES TAB ── */}
           {activeTab === 'bikes' && (
