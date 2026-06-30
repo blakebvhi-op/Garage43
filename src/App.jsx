@@ -206,11 +206,32 @@ function GarageApp() {
   };
 
   const fetchMembers = async (garageId) => {
-    const { data } = await supabase.from('garage_members')
-      .select('id, user_id, role, joined_at, profiles(email, display_name)')
+    const { data: members } = await supabase
+      .from('garage_members')
+      .select('id, user_id, role, joined_at')
       .eq('garage_id', garageId);
-    setGarageMembers(data || []);
-    const me = (data || []).find(m => m.user_id === user.id);
+
+    if (!members || members.length === 0) {
+      setGarageMembers([]);
+      return;
+    }
+
+    const userIds = members.map(m => m.user_id);
+    const { data: profilesData } = await supabase
+      .from('profiles')
+      .select('id, email, display_name')
+      .in('id', userIds);
+
+    const profileMap = {};
+    (profilesData || []).forEach(p => { profileMap[p.id] = p; });
+
+    const enriched = members.map(m => ({
+      ...m,
+      profiles: profileMap[m.user_id] || { email: 'Unknown', display_name: null }
+    }));
+
+    setGarageMembers(enriched);
+    const me = enriched.find(m => m.user_id === user.id);
     setMyRole(me?.role || 'member');
   };
 
@@ -365,20 +386,43 @@ function GarageApp() {
   // MESSAGE BOARD
   // ============================
   const fetchPosts = async (garageId) => {
-    const { data } = await supabase.from('garage_posts')
-      .select('*, profiles(display_name, email), garage_replies(id)')
+    const { data: postsData } = await supabase
+      .from('garage_posts')
+      .select('*, garage_replies(id)')
       .eq('garage_id', garageId)
       .order('pinned', { ascending: false })
       .order('updated_at', { ascending: false });
-    setPosts(data || []);
+
+    if (!postsData || postsData.length === 0) { setPosts([]); return; }
+
+    const userIds = [...new Set(postsData.map(p => p.user_id))];
+    const { data: profilesData } = await supabase
+      .from('profiles').select('id, email, display_name').in('id', userIds);
+    const profileMap = {};
+    (profilesData || []).forEach(p => { profileMap[p.id] = p; });
+
+    setPosts(postsData.map(p => ({ ...p, profiles: profileMap[p.user_id] || { email: 'Unknown', display_name: null } })));
   };
 
   const fetchReplies = async (postId) => {
-    const { data } = await supabase.from('garage_replies')
-      .select('*, profiles(display_name, email)')
+    const { data: repliesData } = await supabase
+      .from('garage_replies')
+      .select('*')
       .eq('post_id', postId)
       .order('created_at', { ascending: true });
-    setReplies(prev => ({ ...prev, [postId]: data || [] }));
+
+    if (!repliesData || repliesData.length === 0) { setReplies(prev => ({ ...prev, [postId]: [] })); return; }
+
+    const userIds = [...new Set(repliesData.map(r => r.user_id))];
+    const { data: profilesData } = await supabase
+      .from('profiles').select('id, email, display_name').in('id', userIds);
+    const profileMap = {};
+    (profilesData || []).forEach(p => { profileMap[p.id] = p; });
+
+    setReplies(prev => ({
+      ...prev,
+      [postId]: repliesData.map(r => ({ ...r, profiles: profileMap[r.user_id] || { email: 'Unknown', display_name: null } }))
+    }));
   };
 
   const handleExpandPost = (post) => {
@@ -423,12 +467,33 @@ function GarageApp() {
   // LIFT SCHEDULE
   // ============================
   const fetchLiftBookings = async (garageId) => {
-    const { data } = await supabase.from('lift_bookings')
-      .select('*, bikes(name, year), profiles(display_name, email)')
+    const { data: bookingsData } = await supabase
+      .from('lift_bookings')
+      .select('*')
       .eq('garage_id', garageId)
       .order('booking_date', { ascending: true })
       .order('start_time', { ascending: true });
-    setLiftBookings(data || []);
+
+    if (!bookingsData || bookingsData.length === 0) { setLiftBookings([]); return; }
+
+    const userIds = [...new Set(bookingsData.map(b => b.requested_by))];
+    const bikeIds = [...new Set(bookingsData.map(b => b.bike_id).filter(Boolean))];
+
+    const [{ data: profilesData }, { data: bikesData }] = await Promise.all([
+      supabase.from('profiles').select('id, email, display_name').in('id', userIds),
+      bikeIds.length > 0 ? supabase.from('bikes').select('id, name, year').in('id', bikeIds) : { data: [] }
+    ]);
+
+    const profileMap = {};
+    (profilesData || []).forEach(p => { profileMap[p.id] = p; });
+    const bikeMap = {};
+    (bikesData || []).forEach(b => { bikeMap[b.id] = b; });
+
+    setLiftBookings(bookingsData.map(b => ({
+      ...b,
+      profiles: profileMap[b.requested_by] || { email: 'Unknown', display_name: null },
+      bikes: b.bike_id ? bikeMap[b.bike_id] || null : null
+    })));
   };
 
   const handleBookLift = async (e) => {
