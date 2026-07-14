@@ -1,202 +1,99 @@
-# Garage 43 🏍️
+# Garage 43 — Community Hub 🔧
 
-A Progressive Web App (PWA) for motorcycle garage management and maintenance tracking.
+A shared hub for the garage crew: a customizable board, a filterable garage
+calendar, a forum with polls, and a fund/receipts ledger. Installable PWA,
+works offline.
 
-**Features:**
-- ✅ Multi-bike management with current mileage tracking
-- ✅ Mileage-based maintenance scheduling
-- ✅ Cost tracking (parts + labor)
-- ✅ Service history with photo uploads
-- ✅ Pre-built maintenance templates (Harley, Yamaha, Honda)
-- ✅ Works offline with service worker
-- ✅ Installable as native app (Android, iOS, Windows, Mac)
+> **Note on direction:** this is the community-hub build. The original
+> motorcycle-maintenance app is parked — when we pick it back up it'll spin off
+> into its own repo and we'll carry the code over.
 
-## Quick Start
+## Features
 
-### Local Development
+- **The Board** — dashboard with fund balance, next event + RSVP, upcoming lift bookings, open vote, and recent receipts.
+- **Garage Calendar** — add events tagged Party / Meeting, filter by category, and see lift reservations rolled in.
+- **Lift** — real time-slot reservations for the single shared lift. Claim a slot (1–4 hrs), no double-booking, release your own.
+- **The Forum** — posts and polls. One vote per member; results reveal after you vote.
+- **Receipts & Ledger** — log what came out of the garage fund and what it was for, with a running balance.
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/yourusername/garage-43.git
-   cd garage-43
-   ```
+## Shared data (Supabase)
 
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
+The app runs two ways automatically:
 
-3. **Run development server**
-   ```bash
-   npm run dev
-   ```
-   Open `http://localhost:5173` in your browser
+- **No keys set** → all data lives in `localStorage` on that device. Great for trying it out; nothing is shared.
+- **Supabase keys set** → data is shared and **live** for everyone (realtime), so RSVPs, votes, receipts, and lift bookings update across phones as they happen. The header shows **Synced** vs **Local** so you always know which mode you're in.
 
-4. **Build for production**
-   ```bash
-   npm run build
-   ```
+To turn on sharing:
 
-## Deployment to GitHub Pages
+1. Create a project at supabase.com.
+2. Run `supabase/schema.sql` in the Supabase SQL editor (creates the tables, turns on realtime, adds authenticated-only policies + a `profiles` table).
+3. Copy `.env.example` to `.env` and paste your Project URL + anon key.
+4. `npm run dev`. The header flips to **Synced**. Online mode starts with an empty database — real content builds up as the crew uses it (the seed data in `src/data/seed.js` is only used in local mode).
 
-This project is configured for automatic deployment via GitHub Actions.
+## Signing in (auth)
 
-### Initial Setup
+Two ways in, on one screen: **email + password** or **Continue with Google**. On
+first sign-in each member picks a display name, which creates their `profiles`
+row — that name/initials then shows on their RSVPs, receipts, and lift bookings.
+There's a **Sign out** control in the sidebar (desktop) and on the avatar (mobile).
 
-1. **Push to GitHub**
-   - Create a new repository on GitHub (e.g., `garage-43`)
-   - Push this code to your repository:
-     ```bash
-     git remote add origin https://github.com/yourusername/garagepass.git
-     git branch -M main
-     git push -u origin main
-     ```
+Supabase setup:
 
-2. **Enable GitHub Pages**
-   - Go to repository **Settings** → **Pages**
-   - Under "Build and deployment":
-     - Source: **GitHub Actions**
-   - The workflow will run automatically on push
+- **Email + password** — the Email provider is on by default. For a small crew, turn **off** "Confirm email" (Authentication → Providers → Email) so signups work immediately; leave it on if you want email verification.
+- **Google** — enable the Google provider (Authentication → Providers → Google) and paste a Client ID + secret from a Google Cloud OAuth credential. Add your app origin to the provider's redirect URLs.
 
-3. **Access your app**
-   - Your PWA will be live at: `https://yourusername.github.io/garage-43/`
+**Local mode has no login** — when Supabase env vars aren't set, the app runs
+with a demo identity so you can try everything without an account.
 
-### Automatic Deployment
+## Stack
 
-Every time you push to `main` or `master` branch:
-1. GitHub Actions builds the app
-2. Service worker is generated
-3. App is deployed to GitHub Pages
-4. Live in ~2-3 minutes
+React 18 · Vite · Tailwind CSS · lucide-react · vite-plugin-pwa. Supabase is
+already a dependency for when we move shared data off the device.
 
-**Check deployment status:** Go to repository → **Actions** tab
+## Run it
 
-## Installation as App
-
-### Mobile (Android/iOS)
-1. Open the PWA URL in your mobile browser
-2. Tap the menu icon
-3. Select "Install app" or "Add to Home Screen"
-
-### Desktop (Windows/Mac/Linux)
-1. Open the PWA URL in Chrome/Edge/Brave
-2. Click the install icon (appears in address bar or menu)
-3. Choose "Install GaragePass"
-
-## Usage
-
-### Getting Started
-1. Sign up with any email and password
-2. Add your first bike with current mileage
-3. Add maintenance tasks or load a template
-
-### Tracking Maintenance
-- Set due dates or mileage intervals (or both)
-- Add costs (parts + labor) and notes
-- Upload photos of work completed
-- Check maintenance status at a glance
-
-### Maintenance Templates
-- Pre-built schedules for Harley, Yamaha, Honda
-- One-click apply to populate common tasks
-- Edit any task after applying
-
-### Data Storage
-- All data stored locally in browser (IndexedDB)
-- Works offline automatically
-- No server required
-- Add to your Supabase backend later if needed
-
-## File Structure
-
-```
-garagepass/
-├── src/
-│   ├── App.jsx           # Main app component
-│   ├── main.jsx          # React entry point
-│   └── index.css         # Tailwind styles
-├── index.html            # HTML template
-├── vite.config.js        # Vite + PWA config
-├── package.json          # Dependencies
-└── .github/
-    └── workflows/
-        └── deploy.yml    # GitHub Actions workflow
+```bash
+npm install
+npm run dev      # local dev
+npm run build    # production build -> dist/
+npm run preview  # preview the build
 ```
 
-## Tech Stack
+## Where things live
 
-- **React 18** - UI framework
-- **Vite** - Fast build tool
-- **Tailwind CSS** - Styling
-- **Lucide React** - Icons
-- **Vite PWA Plugin** - PWA features & service worker
-- **GitHub Actions** - CI/CD
-
-## Customization
-
-### Update PWA Info
-Edit `vite.config.js` - change `manifest` object:
-- `name`, `short_name`, `description`
-- `theme_color`, `background_color`
-- `start_url` (change `/garagepass/` if different repo name)
-
-### Change Colors
-In `src/App.jsx`, update Tailwind color classes:
-- Primary color: `bg-blue-500` → your color
-- Background: `bg-slate-900` → your color
-
-### Add More Bike Templates
-In `src/App.jsx`, add to `MAINTENANCE_TEMPLATES` object:
-```javascript
-suzuki: {
-  name: 'Suzuki',
-  tasks: [
-    { task: 'Oil Change', mileageInterval: 4000, estimatedCost: 60 },
-    // ...
-  ]
-}
+```
+src/
+  App.jsx              app shell, nav, state + handlers, auth gating
+  auth.jsx             sign-in state (email/password + Google), profiles
+  supabase.js          Supabase client (null when no env vars)
+  db.js                one data API over Supabase (+realtime) or localStorage
+  store.js             identity registry + formatting + lift helpers
+  data/seed.js         members, events, lift, receipts, poll (local-mode data)
+  components/
+    ui.jsx             shared Tag / Avatar / Panel / Modal / inputs
+    AuthShell.jsx      framing for the sign-in screens
+    Login.jsx          email/password + Google
+    ProfileSetup.jsx   first-login display name
+    Dashboard.jsx      The Board
+    Calendar.jsx       calendar + filter + add-event
+    Lift.jsx           time-slot reservations
+    Forum.jsx          posts + poll voting
+    Receipts.jsx       ledger + log-receipt
+supabase/
+  schema.sql           run once to set up the shared database
+.env.example           copy to .env to enable sharing + auth
 ```
 
-### Update Base URL
-If deploying to different path, change in `vite.config.js`:
-```javascript
-base: '/your-repo-name/',
-```
+## How the data layer works
 
-## Troubleshooting
+Components never talk to a backend directly — they call `db.load / upsert /
+remove / subscribe` in `src/db.js`, which picks Supabase or `localStorage` based
+on whether the env vars exist. That means the same UI code runs offline-only or
+fully shared with no changes. When you add Supabase Auth later, it plugs in at
+this one layer.
 
-**App not updating after push?**
-- Wait 2-3 minutes for GitHub Actions to complete
-- Check Actions tab for build errors
-- Hard refresh browser (Ctrl+Shift+R)
+## Design
 
-**Service worker not installing?**
-- Clear browser cache
-- Uninstall app, reload page, reinstall
-
-**Changes not showing locally?**
-- Stop dev server and restart: `npm run dev`
-- Clear `node_modules/.vite` folder
-
-**Icons not showing?**
-- Ensure icon files are in `public/` folder
-- Check that paths in `vite.config.js` manifest are correct
-
-## Contributing
-
-Feel free to fork and submit pull requests for improvements!
-
-## License
-
-MIT - Use freely for personal and commercial projects
-
-## Support
-
-For issues or questions:
-1. Check GitHub Issues tab
-2. Review commit history for similar issues
-3. Open a new issue with reproduction steps
-
----
-
-**Built with 🏍️ for motorcycle enthusiasts**
+Shop-ticket aesthetic: gunmetal panels, chalk text, one hazard-orange accent,
+hazard-stripe divider, and all data (money, dates, counts) set in monospace like
+a printed ticket. Tokens live in `tailwind.config.js`.
