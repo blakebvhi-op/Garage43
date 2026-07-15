@@ -2,40 +2,27 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+@layer base {
+  html, body, #root { height: 100%; }
+  body {
+    background: #181B1F;
+    color: #EAE7DE;
+    font-family: 'Barlow', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  :focus-visible { outline: 2px solid #F0531C; outline-offset: 2px; }
 }
 
-::-webkit-scrollbar-track {
-  background: #000000;
+@layer utilities {
+  /* diagonal caution-tape divider — the signature accent */
+  .hazard-strip {
+    background: repeating-linear-gradient(-45deg, #F0531C 0 14px, #181B1F 14px 28px);
+  }
+  .dashed-b { border-bottom: 1px dashed #3A424B; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 }
 
-::-webkit-scrollbar-thumb {
-  background: #404040;
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #555555;
-}
-
-/* Smooth transitions */
-* {
-  transition-property: background-color, border-color, color, fill, stroke;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 150ms;
-}
-
-/* Focus visible styles */
-*:focus-visible {
-  outline: 2px solid #666666;
-  outline-offset: 2px;
-}
-
-/* Prevent layout shift on scrollbar */
-html {
-  overflow-y: scroll;
-  background-color: #000000;
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
 }
