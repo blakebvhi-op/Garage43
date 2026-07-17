@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { LayoutGrid, CalendarDays, Wrench, MessageSquare, Receipt, LogOut } from 'lucide-react'
+import { LayoutGrid, CalendarDays, Wrench, MessageSquare, Receipt, LogOut, Palette } from 'lucide-react'
 import Dashboard from './components/Dashboard'
 import Calendar from './components/Calendar'
 import Lift from './components/Lift'
@@ -8,9 +8,11 @@ import Receipts from './components/Receipts'
 import Login from './components/Login'
 import ProfileSetup from './components/ProfileSetup'
 import AuthShell from './components/AuthShell'
+import ThemeMenu from './components/ThemeMenu'
 import { useAuth } from './auth'
 import * as db from './db'
-import { SEED_EVENTS, SEED_RECEIPTS, SEED_POLL, SEED_LIFT } from './data/seed'
+import { loadTheme, applyTheme, saveTheme, DEFAULT_THEME } from './themes'
+import { SEED_EVENTS, SEED_RECEIPTS, SEED_POLL, SEED_LIFT, SEED_POSTS } from './data/seed'
 
 const NAV = [
   { id: 'dash',     label: 'Board',    crumb: 'Community Hub · The Board',         Icon: LayoutGrid },
@@ -31,6 +33,9 @@ export default function App() {
   const [receipts, setReceipts] = useState(SEED_RECEIPTS)
   const [pollArr, setPollArr] = useState([SEED_POLL])
   const [lift, setLift] = useState(SEED_LIFT)
+  const [posts, setPosts] = useState(SEED_POSTS)
+  const [theme, setTheme] = useState(DEFAULT_THEME)
+  const [themeOpen, setThemeOpen] = useState(false)
   const poll = pollArr[0] || SEED_POLL
 
   const signedIn = !online || (session && profile)
@@ -41,14 +46,15 @@ export default function App() {
     let alive = true
     ;(async () => {
       try {
-        const [ev, rc, pl, lf] = await Promise.all([
+        const [ev, rc, pl, lf, ps] = await Promise.all([
           db.load('events', SEED_EVENTS),
           db.load('receipts', SEED_RECEIPTS),
           db.load('poll', [SEED_POLL]),
           db.load('lift', SEED_LIFT),
+          db.load('posts', SEED_POSTS),
         ])
         if (!alive) return
-        setEvents(ev); setReceipts(rc); setPollArr(pl.length ? pl : [SEED_POLL]); setLift(lf)
+        setEvents(ev); setReceipts(rc); setPollArr(pl.length ? pl : [SEED_POLL]); setLift(lf); setPosts(ps)
       } catch (e) { console.error('load failed', e) }
     })()
     return () => { alive = false }
@@ -65,6 +71,7 @@ export default function App() {
       db.subscribe('receipts', reload('receipts', setReceipts, SEED_RECEIPTS)),
       db.subscribe('poll',     reload('poll', setPollArr, [SEED_POLL])),
       db.subscribe('lift',     reload('lift', setLift, SEED_LIFT)),
+      db.subscribe('posts',    reload('posts', setPosts, SEED_POSTS)),
     ]
     return () => unsub.forEach(u => u && u())
   }, [signedIn])
@@ -73,6 +80,14 @@ export default function App() {
   if (!ready) return <Splash />
   if (online && !session) return <Login />
   if (online && session && !profile) return <ProfileSetup />
+
+  // Apply this member's saved color scheme
+  useEffect(() => {
+    const t = loadTheme(me)
+    setTheme(t); applyTheme(t)
+  }, [me])
+
+  const chooseTheme = id => { setTheme(id); applyTheme(id); saveTheme(me, id); setThemeOpen(false) }
 
   const go = id => { setTab(id); window.scrollTo(0, 0) }
 
@@ -116,6 +131,19 @@ export default function App() {
     setLift(x => x.filter(b => b.id !== id)); db.remove('lift', id).catch(console.error)
   }
 
+  const addPost = body => {
+    const row = { id: uid('ps'), author: me, body, created_at: new Date().toISOString() }
+    setPosts(x => [row, ...x]); db.upsert('posts', row).catch(console.error)
+  }
+
+  const createPoll = (question, optionLabels) => {
+    const p = {
+      id: 'active', author: me, question, closes: '',
+      options: optionLabels.map((label, i) => ({ id: `o${i}`, label, votes: [] })),
+    }
+    setPollArr([p]); db.upsert('poll', p).catch(console.error)
+  }
+
   const meta = NAV.find(n => n.id === tab)
 
   return (
@@ -151,10 +179,16 @@ export default function App() {
         <header className="bg-steel border-b border-edge px-[18px] pt-3.5 pb-3 sticky top-0 z-20">
           <div className="flex items-center justify-between gap-3">
             <Brand crumb={meta?.crumb} />
+          <div className="flex items-center gap-2">
+            <button onClick={() => setThemeOpen(true)} title="Color scheme"
+              className="w-[34px] h-[34px] rounded-full bg-steel2 border border-edge grid place-items-center text-muted hover:text-chalk shrink-0">
+              <Palette size={16} />
+            </button>
             <button onClick={online ? signOut : undefined} title={online ? 'Sign out' : undefined}
               className="md:hidden w-[34px] h-[34px] rounded-full bg-steel2 border border-edge grid place-items-center font-mono text-[12px] shrink-0">
-              {profile?.initials || 'BK'}
+              {profile?.initials || 'ME'}
             </button>
+          </div>
           </div>
         </header>
         <div className="hazard-strip h-1.5" />
@@ -162,7 +196,7 @@ export default function App() {
         {tab === 'dash' && <Dashboard events={events} receipts={receipts} poll={poll} lift={lift} me={me} onRsvp={setRsvp} go={go} />}
         {tab === 'calendar' && <Calendar events={events} lift={lift} onAddEvent={addEvent} />}
         {tab === 'lift' && <Lift lift={lift} me={me} onBook={bookLift} onRelease={releaseLift} />}
-        {tab === 'forum' && <Forum poll={poll} me={me} onVote={vote} />}
+        {tab === 'forum' && <Forum posts={posts} poll={poll} me={me} onVote={vote} onPost={addPost} onCreatePoll={createPoll} />}
         {tab === 'receipts' && <Receipts receipts={receipts} me={me} onAddReceipt={addReceipt} />}
       </div>
 
@@ -177,6 +211,8 @@ export default function App() {
           </button>
         ))}
       </nav>
+
+      {themeOpen && <ThemeMenu current={theme} onPick={chooseTheme} onClose={() => setThemeOpen(false)} />}
     </div>
   )
 }

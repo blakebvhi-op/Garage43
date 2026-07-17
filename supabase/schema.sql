@@ -51,12 +51,20 @@ create table if not exists poll (
   closes   text
 );
 
+create table if not exists posts (
+  id         text primary key,
+  author     text not null,        -- profiles.id
+  body       text not null,
+  created_at timestamptz default now()
+);
+
 -- ---------- realtime ----------
 alter publication supabase_realtime add table profiles;
 alter publication supabase_realtime add table events;
 alter publication supabase_realtime add table lift;
 alter publication supabase_realtime add table receipts;
 alter publication supabase_realtime add table poll;
+alter publication supabase_realtime add table posts;
 
 -- ---------- access (authenticated only) ----------
 alter table profiles enable row level security;
@@ -64,6 +72,7 @@ alter table events   enable row level security;
 alter table lift     enable row level security;
 alter table receipts enable row level security;
 alter table poll     enable row level security;
+alter table posts    enable row level security;
 
 -- Everyone signed in can read all profiles (to show names), but you can only
 -- create / edit your own.
@@ -76,3 +85,4 @@ create policy "members events"   on events   for all using (auth.role() = 'authe
 create policy "members lift"     on lift     for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
 create policy "members receipts" on receipts for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
 create policy "members poll"     on poll     for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+create policy "members posts"    on posts    for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');

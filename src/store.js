@@ -35,6 +35,28 @@ export function hourLabel(h) {
 
 export const rangeLabel = (start, end) => `${hourLabel(start)}–${hourLabel(end)}`
 
+// First day of the current month as an ISO date, e.g. "2026-07-01"
+export function monthStartISO() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
+}
+
+// "July 2026"
+export function monthLabel() {
+  return new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+}
+
+// ISO timestamp -> "just now" / "5m ago" / "3h ago" / "Jul 2"
+export function timeAgo(iso) {
+  if (!iso) return ''
+  const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000)
+  if (s < 60) return 'just now'
+  const m = Math.floor(s / 60); if (m < 60) return `${m}m ago`
+  const h = Math.floor(m / 60); if (h < 24) return `${h}h ago`
+  const d = Math.floor(h / 24); if (d < 7) return `${d}d ago`
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
 // True if [aStart,aEnd) overlaps any booking on the same date.
 export function hasConflict(bookings, date, aStart, aEnd, ignoreId) {
   return bookings.some(b =>

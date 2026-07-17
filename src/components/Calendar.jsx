@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Plus } from 'lucide-react'
 import { Eyebrow, H2, Tag, Modal, inputCls, btnPrimary } from './ui'
 import { CATEGORIES } from '../data/seed'
-import { fmtDate, nameOf, rangeLabel } from '../store'
+import { fmtDate, nameOf, rangeLabel, monthLabel } from '../store'
 
 const FILTERS = [
   { f: 'all',   label: 'All' },
@@ -34,7 +34,7 @@ function AddEvent({ onAdd, onClose }) {
                 className="flex-1 font-cond font-semibold uppercase tracking-wide text-[12.5px] py-2 rounded-md border"
                 style={type === k
                   ? { color: c.color, borderColor: c.color, background: c.color + '1f' }
-                  : { color: '#8B939C', borderColor: '#3A424B' }}>
+                  : { color: 'rgb(var(--muted))', borderColor: 'rgb(var(--edge))' }}>
                 {c.label}
               </button>
             ))}
@@ -89,7 +89,7 @@ export default function Calendar({ events, lift = [], onAddEvent }) {
     <div className="p-4 pb-6 md:px-6 md:max-w-[820px]">
       <div className="flex items-start justify-between">
         <div>
-          <Eyebrow>March 2026</Eyebrow>
+          <Eyebrow>{monthLabel()}</Eyebrow>
           <H2>Garage Calendar</H2>
         </div>
         <button onClick={() => setAdding(true)}
@@ -107,7 +107,7 @@ export default function Calendar({ events, lift = [], onAddEvent }) {
               className="font-cond font-semibold uppercase tracking-wide text-[12.5px] px-3 py-1.5 rounded-full border bg-steel flex items-center gap-1.5"
               style={on
                 ? { color: color || '#EAE7DE', borderColor: color || '#EAE7DE' }
-                : { color: '#8B939C', borderColor: '#3A424B' }}>
+                : { color: 'rgb(var(--muted))', borderColor: 'rgb(var(--edge))' }}>
               {color && <span className="w-2 h-2 rounded-[2px]" style={{ background: color }} />}
               {label}
             </button>

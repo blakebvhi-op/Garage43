@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { supabase, isOnline } from './supabase'
 import { registerProfiles } from './store'
-import { MEMBERS, ME as DEFAULT_ME } from './data/seed'
+import { LOCAL_USER, ME as DEFAULT_ME } from './data/seed'
 
 const AuthCtx = createContext(null)
 export const useAuth = () => useContext(AuthCtx)
@@ -28,9 +28,8 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     // No Supabase configured -> run with the demo identity, no login screen.
     if (!isOnline) {
-      registerProfiles(MEMBERS)
-      const demo = MEMBERS.find(m => m.id === DEFAULT_ME) || MEMBERS[0]
-      setProfile({ id: demo.id, name: demo.name, initials: demo.initials })
+      registerProfiles([LOCAL_USER])
+      setProfile(LOCAL_USER)
       setReady(true)
       return
     }

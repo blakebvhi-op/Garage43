@@ -2,23 +2,64 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Colors are RGB channel triplets so Tailwind opacity utilities (bg-x/10) work
+   AND themes can swap them at runtime. Default theme = Gunmetal. Per-theme
+   overrides only change the surfaces + accent; text/category colors stay put. */
+:root {
+  --ink: 24 27 31;
+  --steel: 35 39 44;
+  --steel2: 46 52 59;
+  --edge: 58 66 75;
+  --chalk: 234 231 222;
+  --muted: 139 147 156;
+  --dim: 91 99 108;
+  --hazard: 240 83 28;
+  --good: 95 164 99;
+  --lift: 62 151 191;
+  --party: 240 83 28;
+  --meet: 201 162 39;
+}
+
+[data-theme="graphite"] {          /* black & grey */
+  --ink: 11 11 12;
+  --steel: 26 26 28;
+  --steel2: 36 36 39;
+  --edge: 52 52 58;
+  --hazard: 201 204 209;
+}
+
+[data-theme="copper"] {
+  --ink: 23 19 15;
+  --steel: 36 28 21;
+  --steel2: 47 37 27;
+  --edge: 59 46 34;
+  --hazard: 200 122 50;
+}
+
+[data-theme="marine"] {
+  --ink: 14 21 24;
+  --steel: 22 35 42;
+  --steel2: 30 49 58;
+  --edge: 39 64 73;
+  --hazard: 63 182 196;
+}
+
 @layer base {
   html, body, #root { height: 100%; }
   body {
-    background: #181B1F;
-    color: #EAE7DE;
+    background: rgb(var(--ink));
+    color: rgb(var(--chalk));
     font-family: 'Barlow', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
   }
-  :focus-visible { outline: 2px solid #F0531C; outline-offset: 2px; }
+  :focus-visible { outline: 2px solid rgb(var(--hazard)); outline-offset: 2px; }
 }
 
 @layer utilities {
-  /* diagonal caution-tape divider — the signature accent */
   .hazard-strip {
-    background: repeating-linear-gradient(-45deg, #F0531C 0 14px, #181B1F 14px 28px);
+    background: repeating-linear-gradient(-45deg, rgb(var(--hazard)) 0 14px, rgb(var(--ink)) 14px 28px);
   }
-  .dashed-b { border-bottom: 1px dashed #3A424B; }
+  .dashed-b { border-bottom: 1px dashed rgb(var(--edge)); }
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 }

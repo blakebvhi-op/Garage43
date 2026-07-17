@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Plus } from 'lucide-react'
 import { Eyebrow, H2, Panel, Modal, inputCls, btnPrimary } from './ui'
-import { money, balanceOf, nameOf, fmtDate } from '../store'
+import { money, balanceOf, nameOf, fmtDate, monthStartISO } from '../store'
 
 function LogReceipt({ me, onAdd, onClose }) {
   const [vendor, setVendor] = useState('')
@@ -75,14 +75,15 @@ function LogReceipt({ me, onAdd, onClose }) {
 export default function Receipts({ receipts, me, onAddReceipt }) {
   const [logging, setLogging] = useState(false)
   const balance = balanceOf(receipts)
-  const inMonth = receipts.filter(r => r.date >= '2026-03-01')
+  const monthStart = monthStartISO()
+  const inMonth = receipts.filter(r => r.date >= monthStart)
   const cashIn = inMonth.filter(r => r.amount > 0).reduce((s, r) => s + r.amount, 0)
   const cashOut = inMonth.filter(r => r.amount < 0).reduce((s, r) => s + Math.abs(r.amount), 0)
   const list = [...receipts].sort((a, b) => b.date.localeCompare(a.date))
 
   return (
     <div className="p-4 pb-6 md:px-6 md:max-w-[820px]">
-      <Eyebrow>Garage Fund · card ••4390</Eyebrow>
+      <Eyebrow>Garage Fund</Eyebrow>
       <H2>Receipts & Ledger</H2>
 
       <Panel className="flex justify-between items-end gap-3 p-4 mb-3.5">
@@ -100,6 +101,9 @@ export default function Receipts({ receipts, me, onAddReceipt }) {
       </Panel>
 
       <Panel>
+        {list.length === 0 && (
+          <div className="p-6 text-center text-muted text-sm">No receipts yet. Tap “Log” to add the first one.</div>
+        )}
         {list.map(r => (
           <div key={r.id} className="flex gap-3 items-center p-3 border-b border-edge last:border-0">
             <div className="w-[38px] h-[38px] rounded-md bg-ink border border-edge grid place-items-center text-lg shrink-0">

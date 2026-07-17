@@ -1,20 +1,23 @@
 /** @type {import('tailwindcss').Config} */
+const c = t => `rgb(var(--${t}) / <alpha-value>)`
+
 export default {
   content: ["./index.html", "./src/**/*.{js,jsx}"],
   theme: {
     extend: {
       colors: {
-        ink: '#181B1F',
-        steel: '#23272C',
-        steel2: '#2E343B',
-        edge: '#3A424B',
-        chalk: '#EAE7DE',
-        muted: '#8B939C',
-        dim: '#5B636C',
-        hazard: '#F0531C',
-        lift: '#3E97BF',
-        meet: '#C9A227',
-        good: '#5FA463',
+        ink: c('ink'),
+        steel: c('steel'),
+        steel2: c('steel2'),
+        edge: c('edge'),
+        chalk: c('chalk'),
+        muted: c('muted'),
+        dim: c('dim'),
+        hazard: c('hazard'),
+        lift: c('lift'),
+        party: c('party'),
+        meet: c('meet'),
+        good: c('good'),
       },
       fontFamily: {
         display: ['Archivo', 'system-ui', 'sans-serif'],

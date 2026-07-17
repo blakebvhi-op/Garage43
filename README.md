@@ -15,6 +15,7 @@ works offline.
 - **Lift** — real time-slot reservations for the single shared lift. Claim a slot (1–4 hrs), no double-booking, release your own.
 - **The Forum** — posts and polls. One vote per member; results reveal after you vote.
 - **Receipts & Ledger** — log what came out of the garage fund and what it was for, with a running balance.
+- **Per-user color scheme** — each member picks their own theme (Gunmetal, Black & Grey, Copper, Marine) from the palette button in the header. Saved to their account, doesn't affect anyone else.
 
 ## Shared data (Supabase)
 
