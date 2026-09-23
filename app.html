@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="gunmetal">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#1c2024">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Garage 43">
+<title>Garage 43</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   GARAGE 43 — shop-ticket theme tokens.
+   Structure mirrors BetterView Pro: fixed header, bottom nav (mobile)
+   + desktop tabs, .view panels, FAB, .mov bottom-sheet overlays.
+   ═══════════════════════════════════════════════════════════════ */
+:root, [data-theme="gunmetal"]{
+  --bg:#1c2024; --panel:#262b31; --panel2:#2f353c; --line:#3b434b;
+  --ink:#e9e4d8; --muted:#98a1ab; --accent:#ff7a1a; --accent-ink:#151515;
+  --ok:#5cc46a; --warn:#f2c14e; --danger:#e5533d; --stripe:#161a1d;
+}
+[data-theme="blackgrey"]{
+  --bg:#0f0f10; --panel:#1a1a1c; --panel2:#232326; --line:#323236;
+  --ink:#ededed; --muted:#8e8e95; --accent:#ff7a1a; --accent-ink:#111;
+  --stripe:#000;
+}
+[data-theme="copper"]{
+  --bg:#1e1916; --panel:#2a221d; --panel2:#362c26; --line:#4a3c33;
+  --ink:#f1e6d6; --muted:#a8978a; --accent:#d9803d; --accent-ink:#1a120c;
+  --stripe:#15100d;
+}
+[data-theme="marine"]{
+  --bg:#0f1a22; --panel:#17252e; --panel2:#1f303b; --line:#2d4351;
+  --ink:#e6eef2; --muted:#8ea3b0; --accent:#ffb020; --accent-ink:#0f1a22;
+  --stripe:#0a1218;
+}
+:root{ --hh:56px; --bnh:60px; --mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+  --disp:'Barlow Condensed','Arial Narrow',sans-serif; --body:'Barlow',system-ui,sans-serif; }
+
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overscroll-behavior:none;}
+body{font-family:var(--body);background:var(--bg);color:var(--ink);overflow:hidden;font-size:15px;line-height:1.35;}
+button,input,select,textarea{font:inherit;color:inherit;}
+button{cursor:pointer;}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+.mono{font-family:var(--mono);}
+.hidden{display:none!important;}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;}}
+
+/* ── HAZARD STRIPE ── */
+.hazard{height:6px;background:repeating-linear-gradient(-45deg,var(--accent) 0 10px,var(--stripe) 10px 20px);}
+
+/* ── LOADING ── */
+.loading{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:900;}
+.loading.hidden{display:none;}
+.wordmark{font-family:var(--disp);font-weight:700;font-size:30px;letter-spacing:.5px;color:var(--ink);line-height:1;}
+.wordmark b{color:var(--accent);font-weight:700;}
+.spinner{width:26px;height:26px;border:3px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-msg{font-family:var(--mono);font-size:12px;color:var(--muted);}
+
+/* ── AUTH ── */
+.auth-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:600;padding:16px;}
+.auth-card{background:var(--panel);border:1px solid var(--line);border-top:4px solid var(--accent);border-radius:12px;padding:28px 24px;width:min(380px,94vw);display:flex;flex-direction:column;gap:12px;}
+.auth-tag{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:-6px;}
+.auth-title{font-family:var(--disp);font-weight:600;font-size:22px;margin:6px 0 2px;}
+.auth-input,.inp{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:11px 13px;width:100%;outline:none;transition:border-color .15s;}
+.auth-input:focus,.inp:focus{border-color:var(--accent);}
+.inp::placeholder{color:var(--muted);opacity:.7;}
+textarea.inp{resize:vertical;min-height:84px;}
+.auth-btn,.btn{background:var(--accent);color:var(--accent-ink);border:none;border-radius:8px;padding:12px 16px;font-family:var(--disp);font-weight:600;font-size:17px;letter-spacing:.3px;transition:opacity .15s;}
+.btn:active,.auth-btn:active{opacity:.85;}
+.btn:disabled{opacity:.5;cursor:not-allowed;}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--ink);}
+.btn.ghost:hover{border-color:var(--accent);}
+.btn.danger{background:transparent;border:1px solid var(--danger);color:var(--danger);}
+.btn.sm{padding:7px 12px;font-size:15px;}
+.auth-error{color:var(--danger);font-size:13px;min-height:16px;}
+.auth-divider{border:none;border-top:1px solid var(--line);margin:4px 0;}
+.auth-switch{font-size:13px;color:var(--muted);text-align:center;}
+.auth-switch span{color:var(--accent);cursor:pointer;}
+.auth-google{display:flex;align-items:center;justify-content:center;gap:10px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:11px;font-weight:500;}
+.auth-google:hover{border-color:var(--ink);}
+.auth-google svg{width:18px;height:18px;}
+
+/* ── HEADER ── */
+header{position:fixed;top:0;left:0;right:0;z-index:50;height:var(--hh);display:flex;align-items:center;justify-content:space-between;padding:0 14px;padding-top:env(safe-area-inset-top,0);background:var(--panel);border-bottom:1px solid var(--line);}
+header .wordmark{font-size:24px;}
+.hdr-right{display:flex;align-items:center;gap:8px;}
+.sync{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:11px;color:var(--muted);cursor:pointer;user-select:none;}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:var(--muted);flex-shrink:0;}
+.sync-dot.syncing{background:var(--accent);animation:blink 1s infinite;}
+.sync-dot.synced{background:var(--ok);}
+.sync-dot.error{background:var(--danger);}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.icon-btn{width:36px;height:36px;border-radius:8px;border:1px solid var(--line);background:transparent;display:flex;align-items:center;justify-content:center;color:var(--ink);}
+.icon-btn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+.avatar{width:32px;height:32px;border-radius:50%;background:var(--accent);color:var(--accent-ink);font-family:var(--disp);font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.avatar.sm{width:24px;height:24px;font-size:11px;}
+.user-badge{display:flex;align-items:center;gap:7px;cursor:pointer;}
+.user-menu{position:fixed;top:calc(var(--hh) + 6px + env(safe-area-inset-top,0));right:12px;background:var(--panel);border:1px solid var(--line);border-radius:10px;min-width:220px;padding:6px;display:none;z-index:120;box-shadow:0 10px 30px rgba(0,0,0,.4);}
+.user-menu.open{display:block;}
+.user-menu-email{font-family:var(--mono);font-size:11px;color:var(--muted);padding:8px 10px;border-bottom:1px solid var(--line);margin-bottom:4px;word-break:break-all;}
+.user-menu-item{display:flex;align-items:center;gap:10px;padding:10px;border-radius:7px;font-size:14px;cursor:pointer;}
+.user-menu-item:hover{background:var(--panel2);}
+.user-menu-item.danger{color:var(--danger);}
+.dtabs{display:none;gap:2px;background:var(--bg);border-radius:8px;padding:3px;}
+.dtab{padding:6px 14px;border-radius:6px;border:none;background:transparent;color:var(--muted);font-family:var(--disp);font-weight:600;font-size:15px;display:flex;align-items:center;gap:6px;}
+.dtab.active{background:var(--accent);color:var(--accent-ink);}
+.dtab:not(.active):hover{color:var(--ink);}
+.dadd{display:none;}
+
+/* ── BOTTOM NAV ── */
+.bnav{position:fixed;bottom:0;left:0;right:0;z-index:50;height:calc(var(--bnh) + env(safe-area-inset-bottom,0));padding-bottom:env(safe-area-inset-bottom,0);background:var(--panel);border-top:1px solid var(--line);display:flex;}
+.bnbtn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border:none;background:transparent;color:var(--muted);position:relative;}
+.bnbtn.active{color:var(--accent);}
+.bnbtn.active::after{content:'';position:absolute;top:0;left:22%;right:22%;height:2px;background:var(--accent);}
+.bnbtn svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+.bnlbl{font-family:var(--disp);font-weight:600;font-size:12px;letter-spacing:.4px;}
+.bnbadge{position:absolute;top:7px;right:calc(50% - 20px);background:var(--accent);color:var(--accent-ink);font-family:var(--mono);font-size:9px;font-weight:600;padding:1px 4px;border-radius:8px;display:none;}
+.bnbadge.show{display:block;}
+
+/* ── FAB ── */
+.fab{position:fixed;right:16px;bottom:calc(var(--bnh) + 14px + env(safe-area-inset-bottom,0));width:52px;height:52px;background:var(--accent);color:var(--accent-ink);border:none;border-radius:50%;font-size:28px;line-height:1;display:flex;align-items:center;justify-content:center;z-index:60;box-shadow:0 6px 18px rgba(0,0,0,.4);transition:transform .1s;}
+.fab:active{transform:scale(.92);}
+
+/* ── APP BODY / VIEWS ── */
+.abody{position:fixed;top:calc(var(--hh) + env(safe-area-inset-top,0));bottom:calc(var(--bnh) + env(safe-area-inset-bottom,0));left:0;right:0;overflow:hidden;}
+.view{display:none;height:100%;overflow:hidden;}
+.view.active{display:flex;flex-direction:column;}
+.vhead{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px 8px;flex-wrap:wrap;}
+.vtitle{font-family:var(--disp);font-weight:700;font-size:26px;line-height:1;}
+.vsub{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:3px;}
+.vscroll{flex:1;overflow-y:auto;padding:0 14px calc(90px + env(safe-area-inset-bottom,0));-webkit-overflow-scrolling:touch;}
+@media(min-width:768px){.vscroll{padding-bottom:40px;max-width:980px;margin:0 auto;width:100%;}.vhead{max-width:980px;margin:0 auto;width:100%;}}
+
+/* ── PANELS / TICKETS ── */
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:12px;}
+.panel-hd{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:10px;}
+.panel-title{font-family:var(--disp);font-weight:600;font-size:19px;}
+.panel-link{font-size:13px;color:var(--accent);background:none;border:none;padding:0;}
+.big-num{font-family:var(--mono);font-size:34px;font-weight:600;line-height:1;letter-spacing:-.5px;}
+.big-num.neg{color:var(--danger);}
+.kv{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px dashed var(--line);font-size:14px;}
+.kv:first-of-type{border-top:none;}
+.kv .v{font-family:var(--mono);white-space:nowrap;}
+.row{display:flex;align-items:center;gap:10px;padding:11px 0;border-top:1px solid var(--line);}
+.row:first-child{border-top:none;padding-top:0;}
+.row .grow{flex:1;min-width:0;}
+.row .t{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.row .s{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:2px;}
+.row .amt{font-family:var(--mono);font-size:15px;white-space:nowrap;}
+.amt.in{color:var(--ok);}
+.amt.out{color:var(--ink);}
+.tag{display:inline-block;font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:4px;border:1px solid var(--line);color:var(--muted);text-transform:lowercase;}
+.tag.party{border-color:var(--accent);color:var(--accent);}
+.tag.meeting{border-color:var(--ok);color:var(--ok);}
+.tag.lift{border-color:var(--warn);color:var(--warn);}
+.tag.poll{border-color:var(--accent);color:var(--accent);}
+.tag.pinned{border-color:var(--warn);color:var(--warn);}
+.empty{padding:28px 14px;text-align:center;color:var(--muted);font-size:14px;}
+.empty b{display:block;font-family:var(--disp);font-weight:600;font-size:20px;color:var(--ink);margin-bottom:4px;}
+.who{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);}
+.stack{display:flex;flex-direction:column;gap:10px;}
+
+/* ── CHIPS / SEGMENTS ── */
+.chips{display:flex;gap:6px;flex-wrap:wrap;}
+.chip{padding:6px 12px;border-radius:20px;border:1px solid var(--line);background:transparent;color:var(--muted);font-size:13px;font-weight:500;}
+.chip.active{background:var(--ink);color:var(--bg);border-color:var(--ink);}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;}
+.seg button{padding:8px 14px;border:none;background:transparent;color:var(--muted);font-family:var(--disp);font-weight:600;font-size:15px;}
+.seg button.active{background:var(--accent);color:var(--accent-ink);}
+.seg.sm button{padding:5px 10px;font-size:13px;}
+
+/* ── RSVP ── */
+.rsvp{display:flex;gap:8px;margin-top:10px;}
+.rsvp .btn{flex:1;}
+.rsvp .btn.picked{outline:2px solid var(--ink);outline-offset:-2px;}
+
+/* ── CALENDAR ── */
+.cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+.cal-month{font-family:var(--disp);font-weight:600;font-size:20px;}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
+.cal-dow{font-family:var(--mono);font-size:10px;color:var(--muted);text-align:center;padding:4px 0;}
+.cal-day{aspect-ratio:1;border-radius:7px;border:1px solid transparent;background:var(--panel);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-family:var(--mono);font-size:13px;position:relative;}
+.cal-day.other{opacity:.35;}
+.cal-day.today{border-color:var(--line);}
+.cal-day.sel{border-color:var(--accent);background:var(--panel2);}
+.cal-day .dots{display:flex;gap:2px;height:5px;}
+.cal-day .dot{width:5px;height:5px;border-radius:50%;}
+.dot.party{background:var(--accent);}.dot.meeting{background:var(--ok);}.dot.lift{background:var(--warn);}
+
+/* ── LIFT ── */
+.lift-day{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.lift-day .d{font-family:var(--disp);font-weight:600;font-size:20px;}
+.timeline{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--panel);}
+.hour{display:grid;grid-template-columns:58px 1fr;min-height:44px;border-top:1px solid var(--line);}
+.hour:first-child{border-top:none;}
+.hour .h{font-family:var(--mono);font-size:11px;color:var(--muted);padding:6px 8px;border-right:1px dashed var(--line);}
+.hour .slot{padding:5px 8px;display:flex;align-items:center;}
+.hour .slot.free{cursor:pointer;color:var(--muted);font-size:12px;}
+.hour .slot.free:hover{background:var(--panel2);}
+.hour .slot.past{opacity:.4;cursor:default;}
+.book{width:100%;background:var(--panel2);border-left:3px solid var(--warn);border-radius:4px;padding:6px 9px;display:flex;align-items:center;gap:8px;font-size:13px;}
+.book.mine{border-left-color:var(--accent);}
+.book .bt{font-family:var(--mono);font-size:11px;color:var(--muted);}
+.book .rel{margin-left:auto;background:none;border:none;color:var(--danger);font-size:12px;}
+.dur{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
+.dur button{padding:12px 0;border:1px solid var(--line);border-radius:8px;background:transparent;font-family:var(--mono);font-size:14px;}
+.dur button.active{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+
+/* ── FORUM ── */
+.post{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:13px 14px;margin-bottom:10px;cursor:pointer;}
+.post.pinned{border-color:var(--warn);}
+.post-meta{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.post-meta .n{font-weight:600;font-size:14px;}
+.post-meta .d{font-family:var(--mono);font-size:11px;color:var(--muted);}
+.post-body{white-space:pre-wrap;word-break:break-word;font-size:15px;}
+.post-foot{display:flex;gap:14px;margin-top:10px;font-family:var(--mono);font-size:12px;color:var(--muted);}
+.poll-opt{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;margin-top:6px;position:relative;overflow:hidden;background:var(--bg);}
+.poll-opt.votable{cursor:pointer;}
+.poll-opt.votable:hover{border-color:var(--accent);}
+.poll-opt .bar{position:absolute;left:0;top:0;bottom:0;background:var(--panel2);z-index:0;}
+.poll-opt .lbl{position:relative;z-index:1;flex:1;}
+.poll-opt .pct{position:relative;z-index:1;font-family:var(--mono);font-size:12px;color:var(--muted);}
+.poll-opt.mine{border-color:var(--accent);}
+.reply{padding:10px 0;border-top:1px solid var(--line);}
+.reply-box{display:flex;gap:8px;margin-top:12px;}
+.reply-box .inp{flex:1;}
+
+/* ── RECEIPTS ── */
+.ledger-hd{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;}
+.ledger-hd .cell{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;}
+.ledger-hd .lbl{font-size:12px;color:var(--muted);margin-bottom:4px;}
+.ledger-hd .val{font-family:var(--mono);font-size:19px;font-weight:600;}
+.ledger-hd .cell.bal{grid-column:1 / -1;border-color:var(--accent);}
+.ledger-hd .cell.bal .val{font-size:30px;}
+.ledger-row{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:11px 0;border-top:1px solid var(--line);}
+.ledger-row:first-child{border-top:none;}
+.ledger-row .bal{font-family:var(--mono);font-size:12px;color:var(--muted);text-align:right;min-width:70px;}
+
+/* ── OVERLAYS (mov) ── */
+.mov{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s;}
+.mov.open{opacity:1;pointer-events:all;}
+.modal{background:var(--panel);border-radius:16px 16px 0 0;border-top:4px solid var(--accent);width:100%;max-height:92vh;overflow-y:auto;padding:16px 16px calc(20px + env(safe-area-inset-bottom,0));transform:translateY(30px);transition:transform .25s cubic-bezier(.33,1,.68,1);}
+.mov.open .modal{transform:translateY(0);}
+@media(min-width:640px){.mov{align-items:center;}.modal{max-width:520px;border-radius:14px;border:1px solid var(--line);border-top:4px solid var(--accent);}}
+.modal-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.modal-title{font-family:var(--disp);font-weight:700;font-size:24px;}
+.modal-x{background:none;border:none;color:var(--muted);font-size:22px;line-height:1;padding:4px 8px;}
+.field{margin-bottom:12px;}
+.field label{display:block;font-size:13px;color:var(--muted);margin-bottom:5px;}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.actions{display:flex;gap:10px;margin-top:8px;}
+.actions .btn{flex:1;}
+.err{color:var(--danger);font-size:13px;min-height:16px;margin-top:6px;}
+.opt-list .inp{margin-bottom:6px;}
+
+/* ── THEME PICKER ── */
+.themes{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.theme-card{border:2px solid var(--line);border-radius:10px;padding:12px;cursor:pointer;text-align:left;background:var(--bg);}
+.theme-card.active{border-color:var(--accent);}
+.theme-card .sw{display:flex;gap:4px;margin-bottom:8px;}
+.theme-card .sw i{width:18px;height:18px;border-radius:4px;display:block;}
+.theme-card .nm{font-family:var(--disp);font-weight:600;font-size:16px;}
+.check{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line);}
+.check:first-child{border-top:none;}
+.check input{width:18px;height:18px;accent-color:var(--accent);}
+.code{font-family:var(--mono);font-size:22px;letter-spacing:3px;background:var(--bg);border:1px dashed var(--line);border-radius:8px;padding:12px;text-align:center;}
+
+/* ── TOAST ── */
+.toast{position:fixed;left:50%;top:calc(var(--hh) + 12px + env(safe-area-inset-top,0));transform:translateX(-50%) translateY(-10px);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-size:14px;font-weight:500;opacity:0;pointer-events:none;transition:all .2s;z-index:300;white-space:nowrap;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* ── DESKTOP ── */
+@media(min-width:768px){
+  :root{--bnh:0px;}
+  .bnav{display:none;}
+  .dtabs{display:flex;}
+  .dadd{display:inline-flex;align-items:center;gap:6px;}
+  .fab{display:none;}
+  
+}
+</style>
+</head>
+<body>
+
+<div class="loading" id="loading">
+  <div class="wordmark">GARAGE <b>43</b></div>
+  <div class="spinner"></div>
+  <div class="loading-msg" id="loadMsg">Opening the bay door…</div>
+</div>
+
+<!-- ═══ AUTH ═══ -->
+<div class="auth-screen hidden" id="authScreen">
+  <div class="auth-card">
+    <div class="wordmark">GARAGE <b>43</b></div>
+    <div class="auth-tag">crew hub</div>
+
+    <div id="authSignIn">
+      <div class="auth-title">Sign in</div>
+      <div class="stack">
+        <input class="auth-input" id="siEmail" type="email" placeholder="Email" autocomplete="email" onkeydown="if(event.key==='Enter')doSignIn()">
+        <input class="auth-input" id="siPassword" type="password" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doSignIn()">
+        <button class="auth-btn" id="siBtn" onclick="doSignIn()">Sign in</button>
+        <div class="auth-error" id="siError"></div>
+        <button class="auth-google" onclick="doGoogle()">
+          <svg viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.5 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.4 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h12.7c-.6 3-2.2 5.5-4.7 7.2l7.4 5.7c4.3-4 7.1-9.9 7.1-16.9z"/><path fill="#FBBC05" d="M10.5 28.7c-.5-1.5-.8-3-.8-4.7s.3-3.2.8-4.7l-7.9-6.1C.9 16.5 0 20.1 0 24s.9 7.5 2.6 10.8l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.3 0 11.6-2.1 15.5-5.7l-7.4-5.7c-2.1 1.4-4.8 2.3-8.1 2.3-6.3 0-11.6-3.9-13.5-9.2l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg>
+          Continue with Google
+        </button>
+        <hr class="auth-divider">
+        <div class="auth-switch">No account? <span onclick="showAuthForm('signup')">Create one</span></div>
+      </div>
+    </div>
+
+    <div id="authSignUp" class="hidden">
+      <div class="auth-title">Create account</div>
+      <div class="stack">
+        <input class="auth-input" id="suEmail" type="email" placeholder="Email" autocomplete="email">
+        <input class="auth-input" id="suPassword" type="password" placeholder="Password (8+ characters)" autocomplete="new-password" onkeydown="if(event.key==='Enter')doSignUp()">
+        <button class="auth-btn" id="suBtn" onclick="doSignUp()">Create account</button>
+        <div class="auth-error" id="suError"></div>
+        <hr class="auth-divider">
+        <div class="auth-switch">Already have one? <span onclick="showAuthForm('signin')">Sign in</span></div>
+      </div>
+    </div>
+
+    <div id="authProfile" class="hidden">
+      <div class="auth-title">What should the crew call you?</div>
+      <div class="stack">
+        <input class="auth-input" id="pfName" type="text" placeholder="Display name" autocomplete="nickname" maxlength="32" onkeydown="if(event.key==='Enter')doSaveProfile()">
+        <button class="auth-btn" onclick="doSaveProfile()">Save name</button>
+        <div class="auth-error" id="pfError"></div>
+      </div>
+    </div>
+
+    <div id="authGarage" class="hidden">
+      <div class="auth-title">Join a garage</div>
+      <div class="stack">
+        <input class="auth-input mono" id="jgCode" type="text" placeholder="Invite code" autocomplete="off" maxlength="12" style="text-transform:lowercase" onkeydown="if(event.key==='Enter')doJoinGarage()">
+        <button class="auth-btn" onclick="doJoinGarage()">Join with code</button>
+        <div class="auth-error" id="jgError"></div>
+        <hr class="auth-divider">
+        <div class="auth-title" style="font-size:18px">Or start a new one</div>
+        <input class="auth-input" id="cgName" type="text" placeholder="Garage name" maxlength="40">
+        <button class="auth-btn" style="background:transparent;border:1px solid var(--line);color:var(--ink)" onclick="doCreateGarage()">Create garage</button>
+        <div class="auth-error" id="cgError"></div>
+        <div class="auth-switch"><span onclick="doSignOut()">Sign out</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ HEADER ═══ -->
+<header>
+  <div class="wordmark">GARAGE <b>43</b></div>
+  <div class="hdr-right">
+    <div class="dtabs" id="dtabs">
+      <button class="dtab active" id="dtBoard" onclick="switchMain('board')">Board</button>
+      <button class="dtab" id="dtCal" onclick="switchMain('cal')">Calendar</button>
+      <button class="dtab" id="dtLift" onclick="switchMain('lift')">Lift</button>
+      <button class="dtab" id="dtForum" onclick="switchMain('forum')">Forum</button>
+      <button class="dtab" id="dtLedger" onclick="switchMain('ledger')">Receipts</button>
+    </div>
+    <button class="btn sm dadd" id="daddBtn" onclick="handleFab()">+ <span id="daddLbl">New event</span></button>
+    <div class="sync" id="syncWrap" onclick="manualResync()" title="Tap to resync"><div class="sync-dot" id="syncDot"></div><span id="syncLbl">Local</span></div>
+    <button class="icon-btn" onclick="openTheme()" title="Color scheme" aria-label="Color scheme"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" stroke="none"/></svg></button>
+    <div class="user-badge" id="userBadge" onclick="toggleUserMenu()"><div class="avatar" id="userAvatar">?</div></div>
+  </div>
+</header>
+<div class="user-menu" id="userMenu">
+  <div class="user-menu-email" id="userMenuEmail"></div>
+  <div class="user-menu-item" onclick="openInvite()"><span>🔑</span><span>Invite code</span></div>
+  <div class="user-menu-item" id="customizeItem" onclick="openCustomize()"><span>🧰</span><span>Customize board</span></div>
+  <div class="user-menu-item" onclick="openMembers()"><span>👥</span><span>Crew</span></div>
+  <div class="user-menu-item" onclick="manualResync()"><span>🔄</span><span>Resync</span></div>
+  <div class="user-menu-item danger" onclick="doSignOut()"><span>⏏</span><span>Sign out</span></div>
+</div>
+
+<!-- ═══ BOTTOM NAV ═══ -->
+<div class="bnav">
+  <button class="bnbtn active" id="bnBoard" onclick="switchMain('board')"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/></svg><div class="bnlbl">Board</div></button>
+  <button class="bnbtn" id="bnCal" onclick="switchMain('cal')"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><div class="bnlbl">Calendar</div><div class="bnbadge" id="bnCalBadge"></div></button>
+  <button class="bnbtn" id="bnLift" onclick="switchMain('lift')"><svg viewBox="0 0 24 24"><path d="M4 20h16M6 20V9h12v11M9 9V4h6v5M12 4v5"/></svg><div class="bnlbl">Lift</div></button>
+  <button class="bnbtn" id="bnForum" onclick="switchMain('forum')"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-8 8H8l-5 3V12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8z"/></svg><div class="bnlbl">Forum</div><div class="bnbadge" id="bnForumBadge"></div></button>
+  <button class="bnbtn" id="bnLedger" onclick="switchMain('ledger')"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg><div class="bnlbl">Receipts</div></button>
+</div>
+<button class="fab" id="fabBtn" onclick="handleFab()" aria-label="Add">+</button>
+
+<!-- ═══ VIEWS ═══ -->
+<div class="abody">
+
+  <div class="view active" id="vBoard">
+    <div class="vhead"><div><div class="vtitle">The Board</div><div class="vsub" id="boardSub"></div></div></div>
+    <div class="vscroll" id="boardBody"></div>
+  </div>
+
+  <div class="view" id="vCal">
+    <div class="vhead">
+      <div><div class="vtitle">Garage Calendar</div><div class="vsub" id="calSub"></div></div>
+      <div class="chips" id="calChips">
+        <button class="chip active" data-f="all" onclick="setCalFilter('all')">All</button>
+        <button class="chip" data-f="party" onclick="setCalFilter('party')">Party</button>
+        <button class="chip" data-f="meeting" onclick="setCalFilter('meeting')">Meeting</button>
+        <button class="chip" data-f="lift" onclick="setCalFilter('lift')">Lift</button>
+      </div>
+    </div>
+    <div class="vscroll">
+      <div class="panel">
+        <div class="cal-nav">
+          <button class="icon-btn" onclick="calShift(-1)" aria-label="Previous month"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+          <div class="cal-month" id="calMonth"></div>
+          <button class="icon-btn" onclick="calShift(1)" aria-label="Next month"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
+        </div>
+        <div class="cal-grid" id="calGrid"></div>
+      </div>
+      <div id="calList"></div>
+    </div>
+  </div>
+
+  <div class="view" id="vLift">
+    <div class="vhead"><div><div class="vtitle">The Lift</div><div class="vsub">One lift. Claim a slot, 1–4 hours.</div></div></div>
+    <div class="vscroll">
+      <div class="lift-day">
+        <button class="icon-btn" onclick="liftShift(-1)" aria-label="Previous day"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+        <div class="d" id="liftDate"></div>
+        <button class="icon-btn" onclick="liftShift(1)" aria-label="Next day"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
+      </div>
+      <div class="timeline" id="liftTimeline"></div>
+      <div style="height:14px"></div>
+      <div id="liftMine"></div>
+    </div>
+  </div>
+
+  <div class="view" id="vForum">
+    <div class="vhead">
+      <div><div class="vtitle">The Forum</div><div class="vsub" id="forumSub"></div></div>
+      <div class="seg sm" id="forumSeg">
+        <button class="active" data-f="all" onclick="setForumFilter('all')">All</button>
+        <button data-f="poll" onclick="setForumFilter('poll')">Polls</button>
+      </div>
+    </div>
+    <div class="vscroll" id="forumBody"></div>
+  </div>
+
+  <div class="view" id="vLedger">
+    <div class="vhead"><div><div class="vtitle">Receipts &amp; Ledger</div><div class="vsub">What came out of the fund, and what went in.</div></div></div>
+    <div class="vscroll">
+      <div class="ledger-hd" id="ledgerHd"></div>
+      <div class="panel" id="ledgerList"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══ OVERLAYS ═══ -->
+<div class="mov" id="movEvent" onclick="if(event.target===this)closeMov('movEvent')">
+  <div class="modal">
+    <div class="modal-hd"><div class="modal-title" id="evTitleHd">New event</div><button class="modal-x" onclick="closeMov('movEvent')">×</button></div>
+    <div class="field"><label>What</label><input class="inp" id="evTitle" placeholder="Bike night, dues meeting, cookout…"></div>
+    <div class="field"><label>Kind</label><div class="seg" id="evKind"><button class="active" data-v="party" onclick="segPick('evKind',this)">Party</button><button data-v="meeting" onclick="segPick('evKind',this)">Meeting</button></div></div>
+    <div class="field-row">
+      <div class="field"><label>Date</label><input class="inp mono" id="evDate" type="date"></div>
+      <div class="field"><label>Start</label><input class="inp mono" id="evTime" type="time" value="18:00"></div>
+    </div>
+    <div class="field"><label>Where</label><input class="inp" id="evWhere" placeholder="The garage"></div>
+    <div class="field"><label>Notes</label><textarea class="inp" id="evNotes" placeholder="Bring a chair. BYO."></textarea></div>
+    <div class="err" id="evErr"></div>
+    <div class="actions"><button class="btn danger hidden" id="evDelBtn" onclick="deleteEvent()">Delete</button><button class="btn" onclick="saveEvent()">Save event</button></div>
+  </div>
+</div>
+
+<div class="mov" id="movLift" onclick="if(event.target===this)closeMov('movLift')">
+  <div class="modal">
+    <div class="modal-hd"><div class="modal-title">Claim the lift</div><button class="modal-x" onclick="closeMov('movLift')">×</button></div>
+    <div class="field-row">
+      <div class="field"><label>Date</label><input class="inp mono" id="lfDate" type="date"></div>
+      <div class="field"><label>Start</label><select class="inp mono" id="lfStart"></select></div>
+    </div>
+    <div class="field"><label>How long</label><div class="dur" id="lfDur"><button class="active" data-v="1" onclick="segPick('lfDur',this)">1 hr</button><button data-v="2" onclick="segPick('lfDur',this)">2 hr</button><button data-v="3" onclick="segPick('lfDur',this)">3 hr</button><button data-v="4" onclick="segPick('lfDur',this)">4 hr</button></div></div>
+    <div class="field"><label>Working on</label><input class="inp" id="lfNote" placeholder="Fork seals, oil change…"></div>
+    <div class="err" id="lfErr"></div>
+    <div class="actions"><button class="btn" onclick="saveLift()">Claim slot</button></div>
+  </div>
+</div>
+
+<div class="mov" id="movPost" onclick="if(event.target===this)closeMov('movPost')">
+  <div class="modal">
+    <div class="modal-hd"><div class="modal-title">New post</div><button class="modal-x" onclick="closeMov('movPost')">×</button></div>
+    <div class="field"><textarea class="inp" id="poBody" placeholder="What's up?" style="min-height:110px"></textarea></div>
+    <div class="check"><input type="checkbox" id="poIsPoll" onchange="document.getElementById('poPoll').classList.toggle('hidden',!this.checked)"><label for="poIsPoll">Add a poll</label></div>
+    <div id="poPoll" class="hidden">
+      <div class="field"><label>Question</label><input class="inp" id="poQ" placeholder="Where are we riding Saturday?"></div>
+      <div class="field"><label>Options</label><div class="opt-list" id="poOpts"><input class="inp" placeholder="Option 1"><input class="inp" placeholder="Option 2"></div><button class="panel-link" onclick="addPollOpt()">+ Add option</button></div>
+    </div>
+    <div class="err" id="poErr"></div>
+    <div class="actions"><button class="btn" onclick="savePost()">Post</button></div>
+  </div>
+</div>
+
+<div class="mov" id="movThread" onclick="if(event.target===this)closeMov('movThread')">
+  <div class="modal" id="threadModal"></div>
+</div>
+
+<div class="mov" id="movReceipt" onclick="if(event.target===this)closeMov('movReceipt')">
+  <div class="modal">
+    <div class="modal-hd"><div class="modal-title">Log a receipt</div><button class="modal-x" onclick="closeMov('movReceipt')">×</button></div>
+    <div class="field"><div class="seg" id="rcKind"><button class="active" data-v="out" onclick="segPick('rcKind',this)">Spent from fund</button><button data-v="in" onclick="segPick('rcKind',this)">Paid into fund</button></div></div>
+    <div class="field-row">
+      <div class="field"><label>Amount</label><input class="inp mono" id="rcAmt" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
+      <div class="field"><label>Date</label><input class="inp mono" id="rcDate" type="date"></div>
+    </div>
+    <div class="field"><label>For what</label><input class="inp" id="rcMemo" placeholder="Brake cleaner, pizza, shop towels…"></div>
+    <div class="err" id="rcErr"></div>
+    <div class="actions"><button class="btn" onclick="saveReceipt()">Log it</button></div>
+  </div>
+</div>
+
+<div class="mov" id="movTheme" onclick="if(event.target===this)closeMov('movTheme')">
+  <div class="modal">
+    <div class="modal-hd"><div class="modal-title">Your color scheme</div><button class="modal-x" onclick="closeMov('movTheme')">×</button></div>
+    <div class="vsub" style="margin:-8px 0 12px">Saved to your account. Only you see it.</div>
+    <div class="themes" id="themeGrid"></div>
+  </div>
+</div>
+
+<div class="mov" id="movInvite" onclick="if(event.target===this)closeMov('movInvite')">
+  <div class="modal">
+    <div class="modal-hd"><div class="modal-title">Invite code</div><button class="modal-x" onclick="closeMov('movInvite')">×</button></div>
+    <div class="vsub" style="margin:-8px 0 12px">Give this to someone so they can join <span id="invGarage"></span>.</div>
+    <div class="code" id="invCode"></div>
+    <div class="actions"><button class="btn ghost" onclick="copyInvite()">Copy code</button></div>
+  </div>
+</div>
+
+<div class="mov" id="movCustomize" onclick="if(event.target===this)closeMov('movCustomize')">
+  <div class="modal">
+    <div class="modal-hd"><div class="modal-title">Customize the board</div><button class="modal-x" onclick="closeMov('movCustomize')">×</button></div>
+    <div class="vsub" style="margin:-8px 0 12px">Everyone in the garage sees the same board.</div>
+    <div id="customizeList"></div>
+    <div class="actions"><button class="btn" onclick="saveCustomize()">Save board</button></div>
+  </div>
+</div>
+
+<div class="mov" id="movMembers" onclick="if(event.target===this)closeMov('movMembers')">
+  <div class="modal">
+    <div class="modal-hd"><div class="modal-title">The crew</div><button class="modal-x" onclick="closeMov('movMembers')">×</button></div>
+    <div id="membersList"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   CONFIG — paste your Supabase project URL + anon key.
+   Leave both empty to run local-only (localStorage, no sign-in).
+   ═══════════════════════════════════════════════════════════════ */
+const SB_URL = '';
+const SB_KEY = '';
+
+const LOCAL = !(SB_URL && SB_KEY);
+const sb = LOCAL ? null : supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random()*16|0; return (c==='x'?r:(r&3|8)).toString(16); }));
+const money = n => (n < 0 ? '-' : '') + '$' + Math.abs(+n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const pad = n => String(n).padStart(2,'0');
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const todayYmd = () => ymd(new Date());
+const fromYmd = s => { const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); };
+const fmtDate = s => fromYmd(s).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+const fmtLong = s => fromYmd(s).toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+const fmtTime = t => { if(!t) return ''; const [h,m] = t.split(':').map(Number); const ap = h>=12?'pm':'am'; return `${h%12||12}:${pad(m)}${ap}`; };
+const fmtWhen = iso => { const d = new Date(iso); return d.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' ' + d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}).toLowerCase(); };
+const ago = iso => { const s = (Date.now() - new Date(iso))/1000; if(s<60) return 'just now'; if(s<3600) return Math.floor(s/60)+'m'; if(s<86400) return Math.floor(s/3600)+'h'; if(s<604800) return Math.floor(s/86400)+'d'; return new Date(iso).toLocaleDateString('en-US',{month:'short',day:'numeric'}); };
+const initials = n => (n||'?').trim().split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase();
+let _toastT; function toast(msg){ const t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(_toastT); _toastT=setTimeout(()=>t.classList.remove('show'),2200); }
+function openMov(id){ $(id).classList.add('open'); }
+function closeMov(id){ $(id).classList.remove('open'); }
+function segPick(segId, btn){ $(segId).querySelectorAll('button').forEach(b=>b.classList.toggle('active',b===btn)); }
+function segVal(segId){ return $(segId).querySelector('button.active')?.dataset.v; }
+function setSync(state, lbl){ const d=$('syncDot'); d.className='sync-dot '+state; if(lbl) $('syncLbl').textContent=lbl; }
+
+/* ═══ STATE ═══ */
+const S = { user:null, profile:null, garage:null, members:[], events:[], rsvps:[], lifts:[], posts:[], replies:[], polls:[], votes:[], receipts:[] };
+let mainView='board', calFilter='all', forumFilter='all', calCursor=new Date(), calSel=todayYmd(), liftDay=todayYmd(), editEventId=null, openThreadId=null;
+const BOARD_WIDGETS = [
+  {id:'fund', label:'Fund balance'},
+  {id:'event', label:'Next event + RSVP'},
+  {id:'lift', label:'Upcoming lift slots'},
+  {id:'poll', label:'Open vote'},
+  {id:'receipts', label:'Recent receipts'},
+];
+const THEMES = [
+  {id:'gunmetal', name:'Gunmetal', sw:['#1c2024','#262b31','#e9e4d8','#ff7a1a']},
+  {id:'blackgrey', name:'Black & Grey', sw:['#0f0f10','#1a1a1c','#ededed','#ff7a1a']},
+  {id:'copper', name:'Copper', sw:['#1e1916','#2a221d','#f1e6d6','#d9803d']},
+  {id:'marine', name:'Marine', sw:['#0f1a22','#17252e','#e6eef2','#ffb020']},
+];
+
+/* ═══ DATA LAYER — same API over Supabase or localStorage ═══ */
+const LS = { get:(k,d)=>{ try{ const v=localStorage.getItem('g43_'+k); return v?JSON.parse(v):d; }catch(e){ return d; } }, set:(k,v)=>{ try{ localStorage.setItem('g43_'+k, JSON.stringify(v)); }catch(e){} } };
+const TABLES = { events:'garage_events', rsvps:'event_rsvps', lifts:'lift_bookings', posts:'garage_posts', replies:'garage_replies', polls:'garage_polls', votes:'poll_votes', receipts:'garage_receipts' };
+const GARAGE_SCOPED = new Set(['garage_events','lift_bookings','garage_posts','garage_polls','garage_receipts']);
+
+const db = {
+  async list(table){
+    if(LOCAL) return LS.get(table, []);
+    let q = sb.from(table).select('*');
+    if(GARAGE_SCOPED.has(table)) q = q.eq('garage_id', S.garage.id);
+    const { data, error } = await q;
+    if(error) throw error;
+    return data || [];
+  },
+  async upsert(table, row){
+    if(LOCAL){ const rows = LS.get(table, []); const i = rows.findIndex(r=>r.id===row.id); if(i>=0) rows[i]={...rows[i],...row}; else rows.push(row); LS.set(table, rows); return row; }
+    const { data, error } = await sb.from(table).upsert(row).select().single();
+    if(error) throw error;
+    return data;
+  },
+  async remove(table, id){
+    if(LOCAL){ LS.set(table, LS.get(table, []).filter(r=>r.id!==id)); return; }
+    const { error } = await sb.from(table).delete().eq('id', id);
+    if(error) throw error;
+  },
+};
+
+async function loadAll(){
+  setSync('syncing', LOCAL ? 'Local' : 'Syncing');
+  try{
+    const [events, rsvps, lifts, posts, replies, polls, votes, receipts] = await Promise.all(
+      ['events','rsvps','lifts','posts','replies','polls','votes','receipts'].map(k => db.list(TABLES[k]).catch(e => { console.warn(k, e); return null; }))
+    );
+    if(events) S.events=events; if(rsvps) S.rsvps=rsvps; if(lifts) S.lifts=lifts; if(posts) S.posts=posts;
+    if(replies) S.replies=replies; if(polls) S.polls=polls; if(votes) S.votes=votes; if(receipts) S.receipts=receipts;
+    if(!LOCAL){ const { data } = await sb.from('garage_members').select('user_id, role, profiles(display_name, email)').eq('garage_id', S.garage.id); S.members = (data||[]).map(m=>({ user_id:m.user_id, role:m.role, name:m.profiles?.display_name||m.profiles?.email||'Member' })); }
+    setSync(LOCAL?'':'synced', LOCAL ? 'Local' : 'Synced');
+  }catch(e){ console.error(e); setSync('error', 'Offline'); }
+  renderCurrent(); updateBadges();
+}
+function manualResync(){ if(LOCAL){ toast('Local mode: nothing to sync'); return; } loadAll().then(()=>toast('Synced')); }
+
+let _rt=null, _rtT=null;
+function subscribeRealtime(){
+  if(LOCAL || _rt) return;
+  _rt = sb.channel('g43-'+S.garage.id);
+  Object.values(TABLES).forEach(t => _rt.on('postgres_changes', { event:'*', schema:'public', table:t }, () => { clearTimeout(_rtT); _rtT=setTimeout(loadAll, 250); }));
+  _rt.subscribe();
+}
+
+/* ═══ IDENTITY ═══ */
+function me(){ return S.user?.id; }
+function myName(){ return S.profile?.display_name || 'Me'; }
+function nameOf(userId){ if(userId===me()) return myName(); return S.members.find(m=>m.user_id===userId)?.name || 'Member'; }
+function isOwner(){ return LOCAL || S.garage?.owner_id===me(); }
+
+/* ═══ AUTH FLOW ═══ */
+function showAuthForm(which){
+  ['authSignIn','authSignUp','authProfile','authGarage'].forEach(id=>$(id).classList.add('hidden'));
+  $({signin:'authSignIn',signup:'authSignUp',profile:'authProfile',garage:'authGarage'}[which]).classList.remove('hidden');
+  $('authScreen').classList.remove('hidden'); $('loading').classList.add('hidden');
+}
+async function doSignIn(){
+  const b=$('siBtn'); b.disabled=true; $('siError').textContent='';
+  const { error } = await sb.auth.signInWithPassword({ email:$('siEmail').value.trim(), password:$('siPassword').value });
+  b.disabled=false; if(error) $('siError').textContent=error.message;
+}
+async function doSignUp(){
+  const b=$('suBtn'); b.disabled=true; $('suError').textContent='';
+  const { data, error } = await sb.auth.signUp({ email:$('suEmail').value.trim(), password:$('suPassword').value });
+  b.disabled=false;
+  if(error){ $('suError').textContent=error.message; return; }
+  if(data.user && !data.session) $('suError').textContent='Check your email to confirm, then sign in.';
+}
+async function doGoogle(){ await sb.auth.signInWithOAuth({ provider:'google', options:{ redirectTo: location.origin + location.pathname } }); }
+async function doSignOut(){ if(LOCAL){ toast('Local mode has no sign-in'); return; } await sb.auth.signOut(); location.reload(); }
+async function doSaveProfile(){
+  const name=$('pfName').value.trim(); if(!name){ $('pfError').textContent='Pick a name.'; return; }
+  const { error } = await sb.from('profiles').upsert({ id:me(), email:S.user.email, display_name:name });
+  if(error){ $('pfError').textContent=error.message; return; }
+  S.profile = { id:me(), email:S.user.email, display_name:name }; await afterProfile();
+}
+async function doJoinGarage(){
+  const code=$('jgCode').value.trim().toLowerCase(); if(!code){ $('jgError').textContent='Enter a code.'; return; }
+  const { data, error } = await sb.rpc('join_garage', { code });
+  if(error){ $('jgError').textContent=error.message.includes('not found')?'No garage with that code.':error.message; return; }
+  await afterProfile();
+}
+async function doCreateGarage(){
+  const name=$('cgName').value.trim(); if(!name){ $('cgError').textContent='Name your garage.'; return; }
+  const { data, error } = await sb.rpc('create_garage', { garage_name:name });
+  if(error){ $('cgError').textContent=error.message; return; }
+  await afterProfile();
+}
+async function afterProfile(){
+  // Find the garage this member belongs to (first one).
+  const { data: mem } = await sb.from('garage_members').select('garage_id, role, garages(*)').eq('user_id', me()).order('joined_at').limit(1);
+  if(!mem || !mem.length){ showAuthForm('garage'); return; }
+  S.garage = mem[0].garages;
+  enterApp();
+}
+async function bootRemote(){
+  $('loadMsg').textContent='Checking sign-in…';
+  const { data:{ session } } = await sb.auth.getSession();
+  sb.auth.onAuthStateChange((evt, sess) => { if(evt==='SIGNED_IN' && !S.user){ S.user=sess.user; resumeAuth(); } if(evt==='SIGNED_OUT'){ location.reload(); } });
+  if(!session){ showAuthForm('signin'); return; }
+  S.user = session.user; await resumeAuth();
+}
+async function resumeAuth(){
+  const { data:p } = await sb.from('profiles').select('*').eq('id', me()).maybeSingle();
+  if(!p || !p.display_name){ showAuthForm('profile'); return; }
+  S.profile=p; applyTheme(p.theme || LS.get('theme','gunmetal'), false);
+  await afterProfile();
+}
+function bootLocal(){
+  S.user={ id:'local-user', email:'you@thisdevice' };
+  S.profile=LS.get('profile', { id:'local-user', display_name:'You' });
+  S.garage=LS.get('garage', { id:'local-garage', name:'Garage 43', owner_id:'local-user', invite_code:'local', dashboard_layout:null });
+  S.members=[{ user_id:'local-user', role:'owner', name:S.profile.display_name }];
+  applyTheme(LS.get('theme','gunmetal'), false);
+  if(!LS.get('seeded',false)) seedLocal();
+  enterApp();
+}
+function seedLocal(){
+  const d=new Date(); d.setDate(d.getDate()+5);
+  LS.set('garage_events',[{ id:uid(), garage_id:'local-garage', title:'Bike night', category:'party', event_date:ymd(d), start_time:'18:00', location:'The garage', notes:'Grill\'s on. Bring a chair.', created_by:'local-user', created_at:new Date().toISOString() }]);
+  LS.set('garage_receipts',[
+    { id:uid(), garage_id:'local-garage', user_id:'local-user', kind:'in', amount:120, memo:'Dues — September', receipt_date:todayYmd(), created_at:new Date().toISOString() },
+    { id:uid(), garage_id:'local-garage', user_id:'local-user', kind:'out', amount:18.47, memo:'Brake cleaner ×3', receipt_date:todayYmd(), created_at:new Date().toISOString() },
+  ]);
+  const pid=uid();
+  LS.set('garage_posts',[{ id:pid, garage_id:'local-garage', user_id:'local-user', body:'Welcome to the hub. This is local mode — add Supabase keys to share it with the crew.', pinned:true, created_at:new Date().toISOString(), updated_at:new Date().toISOString() }]);
+  LS.set('garage_polls',[{ id:uid(), garage_id:'local-garage', post_id:null, question:'Saturday ride?', options:['Kettle Moraine','Holy Hill loop','Stay and wrench'], created_by:'local-user', created_at:new Date().toISOString() }]);
+  LS.set('seeded',true);
+}
+function enterApp(){
+  $('authScreen').classList.add('hidden'); $('loading').classList.add('hidden');
+  $('userAvatar').textContent=initials(myName());
+  $('userMenuEmail').textContent=S.user.email;
+  $('customizeItem').classList.toggle('hidden', !isOwner());
+  $('boardSub').textContent=S.garage.name;
+  buildThemeGrid();
+  loadAll().then(subscribeRealtime);
+}
+
+/* ═══ THEME ═══ */
+function applyTheme(id, save){
+  if(!THEMES.some(t=>t.id===id)) id='gunmetal';
+  document.documentElement.dataset.theme=id; LS.set('theme',id);
+  document.querySelector('meta[name=theme-color]').content=getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
+  buildThemeGrid();
+  if(save && !LOCAL) sb.from('profiles').update({ theme:id }).eq('id', me()).then(({error})=>{ if(error) console.warn(error); });
+}
+function buildThemeGrid(){
+  const cur=document.documentElement.dataset.theme;
+  $('themeGrid').innerHTML=THEMES.map(t=>`<button class="theme-card ${t.id===cur?'active':''}" onclick="applyTheme('${t.id}',true)"><div class="sw">${t.sw.map(c=>`<i style="background:${c}"></i>`).join('')}</div><div class="nm">${t.name}</div></button>`).join('');
+}
+function openTheme(){ openMov('movTheme'); }
+
+/* ═══ NAV ═══ */
+function switchMain(v){
+  mainView=v; closeUserMenu();
+  const map={ board:'vBoard', cal:'vCal', lift:'vLift', forum:'vForum', ledger:'vLedger' };
+  document.querySelectorAll('.view').forEach(x=>x.classList.remove('active')); $(map[v]).classList.add('active');
+  const key=v.charAt(0).toUpperCase()+v.slice(1);
+  ['Board','Cal','Lift','Forum','Ledger'].forEach(k=>{ $('bn'+k).classList.toggle('active',k===key); $('dt'+k).classList.toggle('active',k===key); });
+  $('daddLbl').textContent={ board:'New event', cal:'New event', lift:'Claim slot', forum:'New post', ledger:'Log receipt' }[v];
+  renderCurrent();
+}
+function renderCurrent(){ ({ board:renderBoard, cal:renderCal, lift:renderLift, forum:renderForum, ledger:renderLedger })[mainView](); }
+function handleFab(){ ({ board:openEvent, cal:openEvent, lift:()=>openLift(), forum:openPost, ledger:openReceipt })[mainView](); }
+function toggleUserMenu(){ $('userMenu').classList.toggle('open'); }
+function closeUserMenu(){ $('userMenu').classList.remove('open'); }
+document.addEventListener('click', e=>{ if(!e.target.closest('#userMenu') && !e.target.closest('#userBadge')) closeUserMenu(); });
+function updateBadges(){
+  const t=todayYmd(); const n=S.events.filter(e=>e.event_date>=t).length;
+  $('bnCalBadge').textContent=n; $('bnCalBadge').classList.toggle('show', n>0);
+  const open=S.polls.filter(p=>!S.votes.some(v=>v.poll_id===p.id && v.user_id===me())).length;
+  $('bnForumBadge').textContent=open; $('bnForumBadge').classList.toggle('show', open>0);
+}
+
+/* ═══ DERIVED ═══ */
+function balance(){ return S.receipts.reduce((s,r)=> s + (r.kind==='in' ? +r.amount : -r.amount), 0); }
+function upcomingEvents(){ const t=todayYmd(); return S.events.filter(e=>e.event_date>=t).sort((a,b)=> (a.event_date+a.start_time).localeCompare(b.event_date+b.start_time)); }
+function liftsOn(day){ return S.lifts.filter(l=>l.booking_date===day && l.status!=='cancelled').sort((a,b)=>a.start_time.localeCompare(b.start_time)); }
+function upcomingLifts(){ const t=todayYmd(); return S.lifts.filter(l=>l.booking_date>=t && l.status!=='cancelled').sort((a,b)=>(a.booking_date+a.start_time).localeCompare(b.booking_date+b.start_time)); }
+function pollVotes(pollId){ return S.votes.filter(v=>v.poll_id===pollId); }
+function myVote(pollId){ return S.votes.find(v=>v.poll_id===pollId && v.user_id===me()); }
+function openPolls(){ return S.polls.filter(p=>!myVote(p.id)).sort((a,b)=>b.created_at.localeCompare(a.created_at)); }
+function rsvpsFor(eventId){ return S.rsvps.filter(r=>r.event_id===eventId); }
+function myRsvp(eventId){ return S.rsvps.find(r=>r.event_id===eventId && r.user_id===me()); }
+function hourNum(t){ return +t.split(':')[0]; }
+
+/* ═══ BOARD ═══ */
+function boardLayout(){
+  const saved = S.garage.dashboard_layout;
+  const ids = new Set(BOARD_WIDGETS.map(w=>w.id));
+  if(Array.isArray(saved) && saved.some(w=>ids.has(w.id))) return saved.filter(w=>ids.has(w.id));
+  return BOARD_WIDGETS.map(w=>({ id:w.id, enabled:true }));
+}
+function renderBoard(){
+  const parts=[];
+  for(const w of boardLayout()){
+    if(!w.enabled) continue;
+    if(w.id==='fund'){ const b=balance();
+      parts.push(`<div class="panel"><div class="panel-hd"><div class="panel-title">Garage fund</div><button class="panel-link" onclick="switchMain('ledger')">Ledger</button></div><div class="big-num ${b<0?'neg':''}">${money(b)}</div><div class="vsub">${S.receipts.length} entries</div></div>`); }
+    if(w.id==='event'){ const e=upcomingEvents()[0];
+      if(!e) parts.push(`<div class="panel"><div class="panel-hd"><div class="panel-title">Next event</div><button class="panel-link" onclick="openEvent()">Add one</button></div><div class="empty">Nothing on the calendar yet.</div></div>`);
+      else { const going=rsvpsFor(e.id).filter(r=>r.status==='going'); const mine=myRsvp(e.id)?.status;
+        parts.push(`<div class="panel"><div class="panel-hd"><div class="panel-title">${esc(e.title)}</div><span class="tag ${e.category}">${e.category}</span></div>
+          <div class="kv"><span>When</span><span class="v">${fmtDate(e.event_date)} · ${fmtTime(e.start_time)}</span></div>
+          ${e.location?`<div class="kv"><span>Where</span><span class="v">${esc(e.location)}</span></div>`:''}
+          <div class="kv"><span>Going</span><span class="v">${going.length}${going.length?' — '+esc(going.map(r=>nameOf(r.user_id)).join(', ')):''}</span></div>
+          <div class="rsvp"><button class="btn sm ${mine==='going'?'picked':''}" onclick="setRsvp('${e.id}','going')">I'm in</button><button class="btn sm ghost ${mine==='out'?'picked':''}" onclick="setRsvp('${e.id}','out')">Can't make it</button></div></div>`); } }
+    if(w.id==='lift'){ const ls=upcomingLifts().slice(0,4);
+      parts.push(`<div class="panel"><div class="panel-hd"><div class="panel-title">Lift</div><button class="panel-link" onclick="switchMain('lift')">Book</button></div>${ls.length?ls.map(l=>`<div class="row"><div class="avatar sm">${initials(nameOf(l.requested_by))}</div><div class="grow"><div class="t">${esc(nameOf(l.requested_by))}${l.note?' — '+esc(l.note):''}</div><div class="s">${fmtDate(l.booking_date)} · ${fmtTime(l.start_time)}–${fmtTime(l.end_time)}</div></div></div>`).join(''):`<div class="empty">Lift's open. Claim a slot.</div>`}</div>`); }
+    if(w.id==='poll'){ const p=openPolls()[0];
+      if(p) parts.push(`<div class="panel"><div class="panel-hd"><div class="panel-title">Open vote</div><span class="tag poll">poll</span></div><div style="font-weight:500;margin-bottom:4px">${esc(p.question)}</div>${renderPollOptions(p)}</div>`);
+      else if(S.polls.length) { const p2=[...S.polls].sort((a,b)=>b.created_at.localeCompare(a.created_at))[0]; parts.push(`<div class="panel"><div class="panel-hd"><div class="panel-title">Latest vote</div><span class="tag poll">poll</span></div><div style="font-weight:500;margin-bottom:4px">${esc(p2.question)}</div>${renderPollOptions(p2)}</div>`); } }
+    if(w.id==='receipts'){ const rs=[...S.receipts].sort((a,b)=>(b.receipt_date+b.created_at).localeCompare(a.receipt_date+a.created_at)).slice(0,5);
+      parts.push(`<div class="panel"><div class="panel-hd"><div class="panel-title">Recent receipts</div><button class="panel-link" onclick="openReceipt()">Log one</button></div>${rs.length?rs.map(r=>`<div class="row"><div class="grow"><div class="t">${esc(r.memo)}</div><div class="s">${fmtDate(r.receipt_date)} · ${esc(nameOf(r.user_id))}</div></div><div class="amt ${r.kind}">${r.kind==='in'?'+':'−'}${money(r.amount)}</div></div>`).join(''):`<div class="empty">No receipts yet.</div>`}</div>`); }
+  }
+  $('boardBody').innerHTML = parts.join('') || `<div class="empty"><b>Blank board</b>Turn some widgets on from the menu.</div>`;
+}
+async function setRsvp(eventId, status){
+  const ex=myRsvp(eventId);
+  const row={ id:ex?.id||uid(), event_id:eventId, user_id:me(), status };
+  try{ await db.upsert(TABLES.rsvps, row); if(ex) Object.assign(ex,row); else S.rsvps.push(row); renderCurrent(); toast(status==='going'?"You're in":'Noted'); }catch(e){ toast('Could not save RSVP'); console.error(e); }
+}
+function openCustomize(){
+  closeUserMenu(); const lay=boardLayout();
+  $('customizeList').innerHTML=lay.map((w,i)=>`<div class="check"><input type="checkbox" id="cw_${w.id}" ${w.enabled?'checked':''}><label for="cw_${w.id}" style="flex:1">${BOARD_WIDGETS.find(b=>b.id===w.id).label}</label><button class="icon-btn" onclick="moveWidget(${i},-1)" aria-label="Move up"><svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg></button><button class="icon-btn" onclick="moveWidget(${i},1)" aria-label="Move down"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button></div>`).join('');
+  openMov('movCustomize');
+}
+function moveWidget(i, dir){
+  const lay=boardLayout(); lay.forEach(w=>{ const cb=$('cw_'+w.id); if(cb) w.enabled=cb.checked; });
+  const j=i+dir; if(j<0||j>=lay.length) return; [lay[i],lay[j]]=[lay[j],lay[i]];
+  S.garage.dashboard_layout=lay; openCustomize();
+}
+async function saveCustomize(){
+  const lay=boardLayout(); lay.forEach(w=>{ const cb=$('cw_'+w.id); if(cb) w.enabled=cb.checked; });
+  S.garage.dashboard_layout=lay;
+  if(LOCAL) LS.set('garage', S.garage);
+  else { const { error } = await sb.from('garages').update({ dashboard_layout:lay }).eq('id', S.garage.id); if(error){ toast('Only the owner can change the board'); return; } }
+  closeMov('movCustomize'); renderBoard(); toast('Board saved');
+}
+
+/* ═══ CALENDAR ═══ */
+function setCalFilter(f){ calFilter=f; document.querySelectorAll('#calChips .chip').forEach(c=>c.classList.toggle('active',c.dataset.f===f)); renderCal(); }
+function calShift(n){ calCursor=new Date(calCursor.getFullYear(), calCursor.getMonth()+n, 1); renderCal(); }
+function calItems(){
+  const items=[];
+  if(calFilter!=='lift') S.events.forEach(e=>{ if(calFilter==='all'||e.category===calFilter) items.push({ kind:e.category, date:e.event_date, time:e.start_time, title:e.title, sub:e.location||'', id:e.id, ev:e }); });
+  if(calFilter==='all'||calFilter==='lift') S.lifts.filter(l=>l.status!=='cancelled').forEach(l=>items.push({ kind:'lift', date:l.booking_date, time:l.start_time, title:`Lift — ${nameOf(l.requested_by)}`, sub:(l.note||'')+` · until ${fmtTime(l.end_time)}` }));
+  return items.sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
+}
+function renderCal(){
+  const items=calItems(); const byDay={}; items.forEach(i=>(byDay[i.date]=byDay[i.date]||[]).push(i));
+  const y=calCursor.getFullYear(), m=calCursor.getMonth();
+  $('calMonth').textContent=calCursor.toLocaleDateString('en-US',{month:'long',year:'numeric'});
+  const first=new Date(y,m,1); const start=new Date(y,m,1-first.getDay()); const t=todayYmd();
+  let html=['S','M','T','W','T','F','S'].map(d=>`<div class="cal-dow">${d}</div>`).join('');
+  for(let i=0;i<42;i++){ const d=new Date(start); d.setDate(start.getDate()+i); const k=ymd(d); const its=byDay[k]||[]; const kinds=[...new Set(its.map(x=>x.kind))];
+    html+=`<button class="cal-day ${d.getMonth()!==m?'other':''} ${k===t?'today':''} ${k===calSel?'sel':''}" onclick="calSel='${k}';renderCal()">${d.getDate()}<div class="dots">${kinds.map(x=>`<span class="dot ${x}"></span>`).join('')}</div></button>`; }
+  $('calGrid').innerHTML=html;
+  const upcoming=items.filter(i=>i.date>=t);
+  $('calSub').textContent=`${upcoming.length} upcoming`;
+  const dayItems=byDay[calSel]||[];
+  const list=(arr)=>arr.map(i=>`<div class="row" ${i.ev?`onclick="openEvent('${i.id}')" style="cursor:pointer"`:''}><span class="tag ${i.kind}">${i.kind}</span><div class="grow"><div class="t">${esc(i.title)}</div><div class="s">${fmtDate(i.date)} · ${fmtTime(i.time)}${i.sub?' · '+esc(i.sub):''}</div></div></div>`).join('');
+  $('calList').innerHTML=`<div class="panel"><div class="panel-hd"><div class="panel-title">${calSel===t?'Today':fmtLong(calSel)}</div><button class="panel-link" onclick="openEvent(null,'${calSel}')">Add event</button></div>${dayItems.length?list(dayItems):`<div class="empty">Nothing this day.</div>`}</div>
+    <div class="panel"><div class="panel-hd"><div class="panel-title">Coming up</div></div>${upcoming.length?list(upcoming.slice(0,12)):`<div class="empty"><b>Quiet garage</b>Add a party or a meeting.</div>`}</div>`;
+}
+function openEvent(id, date){
+  editEventId=id||null; const e=id?S.events.find(x=>x.id===id):null;
+  $('evTitleHd').textContent=e?'Edit event':'New event';
+  $('evTitle').value=e?.title||''; $('evDate').value=e?.event_date||date||calSel||todayYmd(); $('evTime').value=e?.start_time?.slice(0,5)||'18:00';
+  $('evWhere').value=e?.location||''; $('evNotes').value=e?.notes||''; $('evErr').textContent='';
+  const kind=e?.category||'party'; $('evKind').querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.v===kind));
+  $('evDelBtn').classList.toggle('hidden', !e || (e.created_by!==me() && !isOwner()));
+  openMov('movEvent'); setTimeout(()=>$('evTitle').focus(),250);
+}
+async function saveEvent(){
+  const title=$('evTitle').value.trim(); if(!title){ $('evErr').textContent='Give it a name.'; return; }
+  if(!$('evDate').value){ $('evErr').textContent='Pick a date.'; return; }
+  const ex=editEventId?S.events.find(x=>x.id===editEventId):null;
+  const row={ id:ex?.id||uid(), garage_id:S.garage.id, title, category:segVal('evKind'), event_date:$('evDate').value, start_time:$('evTime').value||'18:00', location:$('evWhere').value.trim()||null, notes:$('evNotes').value.trim()||null, created_by:ex?.created_by||me(), created_at:ex?.created_at||new Date().toISOString() };
+  try{ await db.upsert(TABLES.events,row); if(ex) Object.assign(ex,row); else S.events.push(row); closeMov('movEvent'); calSel=row.event_date; renderCurrent(); updateBadges(); toast(ex?'Event updated':'Event added'); }
+  catch(e){ $('evErr').textContent=e.message||'Could not save.'; }
+}
+async function deleteEvent(){
+  if(!editEventId || !confirm('Delete this event?')) return;
+  try{ await db.remove(TABLES.events, editEventId); S.events=S.events.filter(e=>e.id!==editEventId); closeMov('movEvent'); renderCurrent(); updateBadges(); toast('Event deleted'); }catch(e){ $('evErr').textContent=e.message; }
+}
+
+/* ═══ LIFT ═══ */
+const LIFT_OPEN=6, LIFT_CLOSE=22;
+function liftShift(n){ const d=fromYmd(liftDay); d.setDate(d.getDate()+n); liftDay=ymd(d); renderLift(); }
+function renderLift(){
+  const t=todayYmd(); $('liftDate').textContent = liftDay===t ? 'Today' : fmtLong(liftDay);
+  const books=liftsOn(liftDay); const nowH=new Date().getHours(); let html='';
+  for(let h=LIFT_OPEN; h<LIFT_CLOSE; h++){
+    const b=books.find(x=>hourNum(x.start_time)===h); const covered=books.find(x=>hourNum(x.start_time)<h && hourNum(x.end_time)>h);
+    const lbl=`${h%12||12}${h>=12?'pm':'am'}`; const past = liftDay<t || (liftDay===t && h<nowH);
+    if(b){ const span=hourNum(b.end_time)-hourNum(b.start_time); const mine=b.requested_by===me();
+      html+=`<div class="hour" style="min-height:${44*span}px"><div class="h">${lbl}</div><div class="slot"><div class="book ${mine?'mine':''}"><div class="avatar sm">${initials(nameOf(b.requested_by))}</div><div><div>${esc(nameOf(b.requested_by))}${b.note?' — '+esc(b.note):''}</div><div class="bt">${fmtTime(b.start_time)}–${fmtTime(b.end_time)}</div></div>${(mine||isOwner())?`<button class="rel" onclick="releaseLift('${b.id}')">Release</button>`:''}</div></div></div>`; }
+    else if(covered){ /* inside a multi-hour block, already drawn */ }
+    else html+=`<div class="hour"><div class="h">${lbl}</div><div class="slot free ${past?'past':''}" ${past?'':`onclick="openLift('${liftDay}',${h})"`}>${past?'':'open'}</div></div>`;
+  }
+  $('liftTimeline').innerHTML=html;
+  const mine=upcomingLifts().filter(l=>l.requested_by===me());
+  $('liftMine').innerHTML=`<div class="panel"><div class="panel-hd"><div class="panel-title">My slots</div></div>${mine.length?mine.map(l=>`<div class="row"><div class="grow"><div class="t">${fmtDate(l.booking_date)} · ${fmtTime(l.start_time)}–${fmtTime(l.end_time)}</div><div class="s">${esc(l.note||'')}</div></div><button class="btn sm danger" onclick="releaseLift('${l.id}')">Release</button></div>`).join(''):`<div class="empty">You haven't claimed the lift.</div>`}</div>`;
+}
+function openLift(date, hour){
+  $('lfDate').value=date||liftDay; $('lfErr').textContent=''; $('lfNote').value='';
+  const sel=$('lfStart'); sel.innerHTML=''; for(let h=LIFT_OPEN;h<LIFT_CLOSE;h++){ const o=document.createElement('option'); o.value=h; o.textContent=`${h%12||12}:00 ${h>=12?'pm':'am'}`; sel.appendChild(o); }
+  sel.value = hour ?? Math.max(LIFT_OPEN, Math.min(LIFT_CLOSE-1, new Date().getHours()+1));
+  $('lfDur').querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.v==='1'));
+  openMov('movLift');
+}
+async function saveLift(){
+  const date=$('lfDate').value, start=+$('lfStart').value, dur=+segVal('lfDur'), end=start+dur;
+  if(!date){ $('lfErr').textContent='Pick a date.'; return; }
+  if(end>LIFT_CLOSE){ $('lfErr').textContent=`Lift closes at ${LIFT_CLOSE%12}pm. Pick a shorter block or earlier start.`; return; }
+  const clash=liftsOn(date).find(b=>hourNum(b.start_time)<end && hourNum(b.end_time)>start);
+  if(clash){ $('lfErr').textContent=`${clash.requested_by===me()?'You already have it':nameOf(clash.requested_by)+' has it'} ${fmtTime(clash.start_time)}–${fmtTime(clash.end_time)}.`; return; }
+  const row={ id:uid(), garage_id:S.garage.id, lift_number:1, requested_by:me(), approved_by:me(), status:'approved', booking_date:date, start_time:`${pad(start)}:00:00`, end_time:`${pad(end)}:00:00`, all_day:false, note:$('lfNote').value.trim()||null, created_at:new Date().toISOString() };
+  try{ await db.upsert(TABLES.lifts,row); S.lifts.push(row); closeMov('movLift'); liftDay=date; renderCurrent(); toast('Slot claimed'); }
+  catch(e){ $('lfErr').textContent=/overlap|exclusion|23P01/.test(e.message)?'Someone just grabbed that time.':(e.message||'Could not book.'); loadAll(); }
+}
+async function releaseLift(id){
+  if(!confirm('Release this slot?')) return;
+  try{ await db.remove(TABLES.lifts,id); S.lifts=S.lifts.filter(l=>l.id!==id); renderCurrent(); toast('Slot released'); }catch(e){ toast('Could not release'); }
+}
+
+/* ═══ FORUM ═══ */
+function setForumFilter(f){ forumFilter=f; document.querySelectorAll('#forumSeg button').forEach(b=>b.classList.toggle('active',b.dataset.f===f)); renderForum(); }
+function renderPollOptions(p){
+  const vs=pollVotes(p.id); const mine=myVote(p.id); const total=vs.length; const opts=Array.isArray(p.options)?p.options:[];
+  return opts.map((o,i)=>{ const n=vs.filter(v=>v.option_index===i).length; const pct=total?Math.round(n/total*100):0;
+    return mine ? `<div class="poll-opt ${mine.option_index===i?'mine':''}"><div class="bar" style="width:${pct}%"></div><div class="lbl">${esc(o)}</div><div class="pct">${pct}% · ${n}</div></div>`
+                : `<div class="poll-opt votable" onclick="event.stopPropagation();vote('${p.id}',${i})"><div class="lbl">${esc(o)}</div><div class="pct">vote</div></div>`; }).join('')
+    + `<div class="vsub" style="margin-top:8px">${total} vote${total===1?'':'s'}${mine?'':' · results show after you vote'}</div>`;
+}
+async function vote(pollId, idx){
+  if(myVote(pollId)) return;
+  const row={ id:uid(), poll_id:pollId, user_id:me(), option_index:idx, created_at:new Date().toISOString() };
+  try{ await db.upsert(TABLES.votes,row); S.votes.push(row); renderCurrent(); updateBadges(); if($('movThread').classList.contains('open')) renderThread(); toast('Vote counted'); }catch(e){ toast('Could not vote'); }
+}
+function feedItems(){
+  const items=[];
+  S.posts.forEach(p=>items.push({ kind:'post', at:p.created_at, p }));
+  S.polls.filter(p=>!p.post_id).forEach(p=>items.push({ kind:'poll', at:p.created_at, p }));
+  return items.filter(i=>forumFilter==='all'||i.kind==='poll').sort((a,b)=>{ const pa=a.kind==='post'&&a.p.pinned, pb=b.kind==='post'&&b.p.pinned; if(pa!==pb) return pa?-1:1; return b.at.localeCompare(a.at); });
+}
+function renderForum(){
+  const items=feedItems(); $('forumSub').textContent=`${S.posts.length} posts · ${S.polls.length} polls`;
+  $('forumBody').innerHTML = items.length ? items.map(i=>{
+    if(i.kind==='poll'){ const p=i.p; return `<div class="post"><div class="post-meta"><div class="avatar sm">${initials(nameOf(p.created_by))}</div><span class="n">${esc(nameOf(p.created_by))}</span><span class="tag poll">poll</span><span class="d">${ago(p.created_at)}</span></div><div class="post-body" style="font-weight:500">${esc(p.question)}</div>${renderPollOptions(p)}</div>`; }
+    const p=i.p; const rc=S.replies.filter(r=>r.post_id===p.id).length; const poll=S.polls.find(x=>x.post_id===p.id);
+    return `<div class="post ${p.pinned?'pinned':''}" onclick="openThread('${p.id}')"><div class="post-meta"><div class="avatar sm">${initials(nameOf(p.user_id))}</div><span class="n">${esc(nameOf(p.user_id))}</span>${p.pinned?'<span class="tag pinned">pinned</span>':''}<span class="d">${ago(p.created_at)}</span></div><div class="post-body">${esc(p.body)}</div>${poll?`<div style="margin-top:8px;font-weight:500">${esc(poll.question)}</div>${renderPollOptions(poll)}`:''}<div class="post-foot"><span>${rc} repl${rc===1?'y':'ies'}</span></div></div>`;
+  }).join('') : `<div class="empty"><b>Nothing posted</b>Start the conversation.</div>`;
+}
+function openPost(){ $('poBody').value=''; $('poIsPoll').checked=false; $('poPoll').classList.add('hidden'); $('poQ').value=''; $('poOpts').innerHTML='<input class="inp" placeholder="Option 1"><input class="inp" placeholder="Option 2">'; $('poErr').textContent=''; openMov('movPost'); setTimeout(()=>$('poBody').focus(),250); }
+function addPollOpt(){ const n=$('poOpts').children.length+1; if(n>6) return; const i=document.createElement('input'); i.className='inp'; i.placeholder='Option '+n; $('poOpts').appendChild(i); }
+async function savePost(){
+  const body=$('poBody').value.trim(); const isPoll=$('poIsPoll').checked;
+  const q=$('poQ').value.trim(); const opts=[...$('poOpts').querySelectorAll('input')].map(i=>i.value.trim()).filter(Boolean);
+  if(!body && !isPoll){ $('poErr').textContent='Write something.'; return; }
+  if(isPoll && (!q || opts.length<2)){ $('poErr').textContent='A poll needs a question and at least two options.'; return; }
+  try{
+    let post=null;
+    if(body){ post={ id:uid(), garage_id:S.garage.id, user_id:me(), body, pinned:false, created_at:new Date().toISOString(), updated_at:new Date().toISOString() }; await db.upsert(TABLES.posts,post); S.posts.push(post); }
+    if(isPoll){ const poll={ id:uid(), garage_id:S.garage.id, post_id:post?.id||null, question:q, options:opts, created_by:me(), created_at:new Date().toISOString() }; await db.upsert(TABLES.polls,poll); S.polls.push(poll); }
+    closeMov('movPost'); renderCurrent(); updateBadges(); toast('Posted');
+  }catch(e){ $('poErr').textContent=e.message||'Could not post.'; }
+}
+function openThread(id){ openThreadId=id; renderThread(); openMov('movThread'); }
+function renderThread(){
+  const p=S.posts.find(x=>x.id===openThreadId); if(!p){ closeMov('movThread'); return; }
+  const rs=S.replies.filter(r=>r.post_id===p.id).sort((a,b)=>a.created_at.localeCompare(b.created_at)); const poll=S.polls.find(x=>x.post_id===p.id);
+  const canMod = p.user_id===me() || isOwner();
+  $('threadModal').innerHTML=`<div class="modal-hd"><div class="modal-title">Thread</div><button class="modal-x" onclick="closeMov('movThread')">×</button></div>
+    <div class="post-meta"><div class="avatar sm">${initials(nameOf(p.user_id))}</div><span class="n">${esc(nameOf(p.user_id))}</span>${p.pinned?'<span class="tag pinned">pinned</span>':''}<span class="d">${fmtWhen(p.created_at)}</span></div>
+    <div class="post-body">${esc(p.body)}</div>${poll?`<div style="margin-top:8px;font-weight:500">${esc(poll.question)}</div>${renderPollOptions(poll)}`:''}
+    ${canMod?`<div class="post-foot">${isOwner()?`<button class="panel-link" onclick="togglePin('${p.id}')">${p.pinned?'Unpin':'Pin'}</button>`:''}<button class="panel-link" style="color:var(--danger)" onclick="deletePost('${p.id}')">Delete</button></div>`:''}
+    <div style="margin-top:14px">${rs.map(r=>`<div class="reply"><div class="post-meta" style="margin-bottom:4px"><div class="avatar sm">${initials(nameOf(r.user_id))}</div><span class="n">${esc(nameOf(r.user_id))}</span><span class="d">${ago(r.created_at)}</span></div><div class="post-body">${esc(r.body)}</div></div>`).join('')||`<div class="empty">No replies yet.</div>`}</div>
+    <div class="reply-box"><input class="inp" id="rpBody" placeholder="Reply…" onkeydown="if(event.key==='Enter')sendReply()"><button class="btn sm" onclick="sendReply()">Send</button></div>`;
+}
+async function sendReply(){
+  const body=$('rpBody').value.trim(); if(!body) return;
+  const row={ id:uid(), post_id:openThreadId, user_id:me(), body, created_at:new Date().toISOString() };
+  try{ await db.upsert(TABLES.replies,row); S.replies.push(row); renderThread(); renderForum(); }catch(e){ toast('Could not reply'); }
+}
+async function togglePin(id){ const p=S.posts.find(x=>x.id===id); try{ await db.upsert(TABLES.posts,{ ...p, pinned:!p.pinned }); p.pinned=!p.pinned; renderThread(); renderForum(); }catch(e){ toast('Only the owner can pin'); } }
+async function deletePost(id){ if(!confirm('Delete this post?')) return; try{ await db.remove(TABLES.posts,id); S.posts=S.posts.filter(p=>p.id!==id); closeMov('movThread'); renderForum(); toast('Post deleted'); }catch(e){ toast('Could not delete'); } }
+
+/* ═══ LEDGER ═══ */
+function renderLedger(){
+  const rows=[...S.receipts].sort((a,b)=>(a.receipt_date+a.created_at).localeCompare(b.receipt_date+b.created_at));
+  let run=0; const withBal=rows.map(r=>{ run+= r.kind==='in'?+r.amount:-r.amount; return { ...r, run }; }).reverse();
+  const inn=rows.filter(r=>r.kind==='in').reduce((s,r)=>s+ +r.amount,0), out=rows.filter(r=>r.kind==='out').reduce((s,r)=>s+ +r.amount,0);
+  $('ledgerHd').innerHTML=`<div class="cell bal"><div class="lbl">Fund balance</div><div class="val ${run<0?'neg':''}" style="${run<0?'color:var(--danger)':''}">${money(run)}</div></div><div class="cell"><div class="lbl">Paid in</div><div class="val" style="color:var(--ok)">${money(inn)}</div></div><div class="cell"><div class="lbl">Spent</div><div class="val">${money(out)}</div></div><div class="cell"><div class="lbl">Entries</div><div class="val">${rows.length}</div></div>`;
+  $('ledgerList').innerHTML = withBal.length ? withBal.map(r=>`<div class="ledger-row"><div class="grow"><div class="t">${esc(r.memo)}</div><div class="s mono" style="font-size:12px;color:var(--muted)">${fmtDate(r.receipt_date)} · ${esc(nameOf(r.user_id))}${(r.user_id===me()||isOwner())?` · <button class="panel-link" style="color:var(--danger);font-size:12px" onclick="deleteReceipt('${r.id}')">remove</button>`:''}</div></div><div class="amt ${r.kind}">${r.kind==='in'?'+':'−'}${money(r.amount)}</div><div class="bal">${money(r.run)}</div></div>`).join('') : `<div class="empty"><b>Empty ledger</b>Log the first receipt.</div>`;
+}
+function openReceipt(){ $('rcAmt').value=''; $('rcMemo').value=''; $('rcDate').value=todayYmd(); $('rcErr').textContent=''; $('rcKind').querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.v==='out')); openMov('movReceipt'); setTimeout(()=>$('rcAmt').focus(),250); }
+async function saveReceipt(){
+  const amt=parseFloat($('rcAmt').value); const memo=$('rcMemo').value.trim();
+  if(!(amt>0)){ $('rcErr').textContent='Enter an amount.'; return; } if(!memo){ $('rcErr').textContent='Say what it was for.'; return; }
+  const row={ id:uid(), garage_id:S.garage.id, user_id:me(), kind:segVal('rcKind'), amount:Math.round(amt*100)/100, memo, receipt_date:$('rcDate').value||todayYmd(), created_at:new Date().toISOString() };
+  try{ await db.upsert(TABLES.receipts,row); S.receipts.push(row); closeMov('movReceipt'); renderCurrent(); toast('Logged'); }catch(e){ $('rcErr').textContent=e.message||'Could not save.'; }
+}
+async function deleteReceipt(id){ if(!confirm('Remove this entry?')) return; try{ await db.remove(TABLES.receipts,id); S.receipts=S.receipts.filter(r=>r.id!==id); renderCurrent(); toast('Removed'); }catch(e){ toast('Could not remove'); } }
+
+/* ═══ CREW / INVITE ═══ */
+function openInvite(){ closeUserMenu(); $('invGarage').textContent=S.garage.name; $('invCode').textContent=LOCAL?'local mode':S.garage.invite_code; openMov('movInvite'); }
+function copyInvite(){ navigator.clipboard?.writeText(S.garage.invite_code||'').then(()=>toast('Copied')); }
+function openMembers(){ closeUserMenu(); const ms=[...S.members].sort((a,b)=>(a.role==='owner'?-1:1)); $('membersList').innerHTML=ms.map(m=>`<div class="row"><div class="avatar sm">${initials(m.name)}</div><div class="grow"><div class="t">${esc(m.name)}</div><div class="s">${m.role}</div></div></div>`).join('')||`<div class="empty">Just you so far.</div>`; openMov('movMembers'); }
+
+/* ═══ PWA ═══ */
+if('serviceWorker' in navigator){ window.addEventListener('load', ()=>navigator.serviceWorker.register('sw.js').catch(()=>{})); }
+window.addEventListener('online', ()=>{ if(!LOCAL) loadAll(); });
+window.addEventListener('offline', ()=>setSync('error','Offline'));
+
+/* ═══ BOOT ═══ */
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') document.querySelectorAll('.mov.open').forEach(m=>m.classList.remove('open')); });
+(LOCAL ? bootLocal : bootRemote)();
+</script>
+</body>
+</html>
