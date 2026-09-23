@@ -104,6 +104,11 @@ header .wordmark{font-size:24px;}
 .icon-btn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
 .avatar{width:32px;height:32px;border-radius:50%;background:var(--accent);color:var(--accent-ink);font-family:var(--disp);font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .avatar.sm{width:24px;height:24px;font-size:11px;}
+.avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;}
+.avatar.lg{width:84px;height:84px;font-size:30px;}
+.pf-top{display:flex;align-items:center;gap:14px;margin-bottom:14px;}
+.pf-top input[type=file]{display:none;}
+.road{font-family:var(--mono);font-size:12px;color:var(--accent);}
 .user-badge{display:flex;align-items:center;gap:7px;cursor:pointer;}
 .user-menu{position:fixed;top:calc(var(--hh) + 6px + env(safe-area-inset-top,0));right:12px;background:var(--panel);border:1px solid var(--line);border-radius:10px;min-width:220px;padding:6px;display:none;z-index:120;box-shadow:0 10px 30px rgba(0,0,0,.4);}
 .user-menu.open{display:block;}
@@ -377,6 +382,7 @@ header .wordmark{font-size:24px;}
 </header>
 <div class="user-menu" id="userMenu">
   <div class="user-menu-email" id="userMenuEmail"></div>
+  <div class="user-menu-item" onclick="openProfile()"><span>🪪</span><span>My profile</span></div>
   <div class="user-menu-item" onclick="openInvite()"><span>🔑</span><span>Invite code</span></div>
   <div class="user-menu-item" id="customizeItem" onclick="openCustomize()"><span>🧰</span><span>Customize board</span></div>
   <div class="user-menu-item" onclick="openMembers()"><span>👥</span><span>Crew</span></div>
@@ -556,6 +562,22 @@ header .wordmark{font-size:24px;}
   </div>
 </div>
 
+<div class="mov" id="movProfile" onclick="if(event.target===this)closeMov('movProfile')">
+  <div class="modal">
+    <div class="modal-hd"><div class="modal-title">My profile</div><button class="modal-x" onclick="closeMov('movProfile')">×</button></div>
+    <div class="pf-top">
+      <label for="pfPic" style="cursor:pointer"><div class="avatar lg" id="pfAvatar">?</div></label>
+      <div><button class="btn sm ghost" onclick="document.getElementById('pfPic').click()">Change photo</button><button class="btn sm ghost hidden" id="pfPicClear" style="margin-left:6px" onclick="clearPic()">Remove</button><div class="vsub" style="margin-top:6px">Tap the circle or the button.</div></div>
+      <input type="file" id="pfPic" accept="image/*" onchange="pickPic(this)">
+    </div>
+    <div class="field"><label>Name</label><input class="inp" id="pfDisplay" maxlength="32" placeholder="Blake"></div>
+    <div class="field"><label>Road name <span style="opacity:.6">(if you've got one)</span></label><input class="inp" id="pfRoad" maxlength="24" placeholder="Yeet"></div>
+    <div class="field"><label>Motorcycles</label><textarea class="inp" id="pfBikes" placeholder="'19 Road Glide, '78 CB750…"></textarea></div>
+    <div class="err" id="pfErr2"></div>
+    <div class="actions"><button class="btn" onclick="saveProfile()">Save profile</button></div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
@@ -584,6 +606,7 @@ const fmtTime = t => { if(!t) return ''; const [h,m] = t.split(':').map(Number);
 const fmtWhen = iso => { const d = new Date(iso); return d.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' ' + d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}).toLowerCase(); };
 const ago = iso => { const s = (Date.now() - new Date(iso))/1000; if(s<60) return 'just now'; if(s<3600) return Math.floor(s/60)+'m'; if(s<86400) return Math.floor(s/3600)+'h'; if(s<604800) return Math.floor(s/86400)+'d'; return new Date(iso).toLocaleDateString('en-US',{month:'short',day:'numeric'}); };
 const initials = n => (n||'?').trim().split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase();
+function av(userId, cls){ const p = userId===me() ? S.profile : S.members.find(m=>m.user_id===userId); const pic=p?.avatar_url; return `<div class="avatar ${cls||''}">${pic?`<img src="${pic}" alt="">`:initials(nameOf(userId))}</div>`; }
 let _toastT; function toast(msg){ const t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(_toastT); _toastT=setTimeout(()=>t.classList.remove('show'),2200); }
 function openMov(id){ $(id).classList.add('open'); }
 function closeMov(id){ $(id).classList.remove('open'); }
@@ -643,7 +666,14 @@ async function loadAll(){
     );
     if(events) S.events=events; if(rsvps) S.rsvps=rsvps; if(lifts) S.lifts=lifts; if(posts) S.posts=posts;
     if(replies) S.replies=replies; if(polls) S.polls=polls; if(votes) S.votes=votes; if(receipts) S.receipts=receipts;
-    if(!LOCAL){ const { data } = await sb.from('garage_members').select('user_id, role, profiles(display_name, email)').eq('garage_id', S.garage.id); S.members = (data||[]).map(m=>({ user_id:m.user_id, role:m.role, name:m.profiles?.display_name||m.profiles?.email||'Member' })); }
+    if(!LOCAL){
+      const { data:mems, error:me1 } = await sb.from('garage_members').select('user_id, role').eq('garage_id', S.garage.id);
+      if(me1) console.warn('members', me1);
+      const ids=(mems||[]).map(m=>m.user_id);
+      const { data:profs, error:me2 } = ids.length ? await sb.from('profiles').select('id, display_name, email, road_name, bikes, avatar_url').in('id', ids) : { data:[] };
+      if(me2) console.warn('profiles', me2);
+      S.members=(mems||[]).map(m=>{ const p=(profs||[]).find(x=>x.id===m.user_id); return { user_id:m.user_id, role:m.role, name:p?.display_name||p?.email||'Member', road_name:p?.road_name||'', bikes:p?.bikes||'', avatar_url:p?.avatar_url||'' }; });
+    }
     setSync(LOCAL?'':'synced', LOCAL ? 'Local' : 'Synced');
   }catch(e){ console.error(e); setSync('error', 'Offline'); }
   renderCurrent(); updateBadges();
@@ -726,7 +756,7 @@ function bootLocal(){
   S.user={ id:'local-user', email:'you@thisdevice' };
   S.profile=LS.get('profile', { id:'local-user', display_name:'You' });
   S.garage=LS.get('garage', { id:'local-garage', name:'Garage 43', owner_id:'local-user', invite_code:'local', dashboard_layout:null });
-  S.members=[{ user_id:'local-user', role:'owner', name:S.profile.display_name }];
+  S.members=[{ user_id:'local-user', role:'owner', name:S.profile.display_name, road_name:S.profile.road_name||'', bikes:S.profile.bikes||'', avatar_url:S.profile.avatar_url||'' }];
   applyTheme(LS.get('theme','gunmetal'), false);
   if(!LS.get('seeded',false)) seedLocal();
   enterApp();
@@ -745,7 +775,7 @@ function seedLocal(){
 }
 function enterApp(){
   $('authScreen').classList.add('hidden'); $('loading').classList.add('hidden');
-  $('userAvatar').textContent=initials(myName());
+  $('userAvatar').innerHTML = S.profile?.avatar_url ? `<img src="${S.profile.avatar_url}" alt="">` : initials(myName());
   $('userMenuEmail').textContent=S.user.email;
   $('customizeItem').classList.toggle('hidden', !isOwner());
   $('boardSub').textContent=S.garage.name;
@@ -823,7 +853,7 @@ function renderBoard(){
           <div class="kv"><span>Going</span><span class="v">${going.length}${going.length?' — '+esc(going.map(r=>nameOf(r.user_id)).join(', ')):''}</span></div>
           <div class="rsvp"><button class="btn sm ${mine==='going'?'picked':''}" onclick="setRsvp('${e.id}','going')">I'm in</button><button class="btn sm ghost ${mine==='out'?'picked':''}" onclick="setRsvp('${e.id}','out')">Can't make it</button></div></div>`); } }
     if(w.id==='lift'){ const ls=upcomingLifts().slice(0,4);
-      parts.push(`<div class="panel"><div class="panel-hd"><div class="panel-title">Lift</div><button class="panel-link" onclick="switchMain('lift')">Book</button></div>${ls.length?ls.map(l=>`<div class="row"><div class="avatar sm">${initials(nameOf(l.requested_by))}</div><div class="grow"><div class="t">${esc(nameOf(l.requested_by))}${l.note?' — '+esc(l.note):''}</div><div class="s">${fmtDate(l.booking_date)} · ${fmtTime(l.start_time)}–${fmtTime(l.end_time)}</div></div></div>`).join(''):`<div class="empty">Lift's open. Claim a slot.</div>`}</div>`); }
+      parts.push(`<div class="panel"><div class="panel-hd"><div class="panel-title">Lift</div><button class="panel-link" onclick="switchMain('lift')">Book</button></div>${ls.length?ls.map(l=>`<div class="row">${av(l.requested_by,"sm")}<div class="grow"><div class="t">${esc(nameOf(l.requested_by))}${l.note?' — '+esc(l.note):''}</div><div class="s">${fmtDate(l.booking_date)} · ${fmtTime(l.start_time)}–${fmtTime(l.end_time)}</div></div></div>`).join(''):`<div class="empty">Lift's open. Claim a slot.</div>`}</div>`); }
     if(w.id==='poll'){ const p=openPolls()[0];
       if(p) parts.push(`<div class="panel"><div class="panel-hd"><div class="panel-title">Open vote</div><span class="tag poll">poll</span></div><div style="font-weight:500;margin-bottom:4px">${esc(p.question)}</div>${renderPollOptions(p)}</div>`);
       else if(S.polls.length) { const p2=[...S.polls].sort((a,b)=>b.created_at.localeCompare(a.created_at))[0]; parts.push(`<div class="panel"><div class="panel-hd"><div class="panel-title">Latest vote</div><span class="tag poll">poll</span></div><div style="font-weight:500;margin-bottom:4px">${esc(p2.question)}</div>${renderPollOptions(p2)}</div>`); } }
@@ -912,7 +942,7 @@ function renderLift(){
     const b=books.find(x=>hourNum(x.start_time)===h); const covered=books.find(x=>hourNum(x.start_time)<h && hourNum(x.end_time)>h);
     const lbl=`${h%12||12}${h>=12?'pm':'am'}`; const past = liftDay<t || (liftDay===t && h<nowH);
     if(b){ const span=hourNum(b.end_time)-hourNum(b.start_time); const mine=b.requested_by===me();
-      html+=`<div class="hour" style="min-height:${44*span}px"><div class="h">${lbl}</div><div class="slot"><div class="book ${mine?'mine':''}"><div class="avatar sm">${initials(nameOf(b.requested_by))}</div><div><div>${esc(nameOf(b.requested_by))}${b.note?' — '+esc(b.note):''}</div><div class="bt">${fmtTime(b.start_time)}–${fmtTime(b.end_time)}</div></div>${(mine||isOwner())?`<button class="rel" onclick="releaseLift('${b.id}')">Release</button>`:''}</div></div></div>`; }
+      html+=`<div class="hour" style="min-height:${44*span}px"><div class="h">${lbl}</div><div class="slot"><div class="book ${mine?'mine':''}">${av(b.requested_by,"sm")}<div><div>${esc(nameOf(b.requested_by))}${b.note?' — '+esc(b.note):''}</div><div class="bt">${fmtTime(b.start_time)}–${fmtTime(b.end_time)}</div></div>${(mine||isOwner())?`<button class="rel" onclick="releaseLift('${b.id}')">Release</button>`:''}</div></div></div>`; }
     else if(covered){ /* inside a multi-hour block, already drawn */ }
     else html+=`<div class="hour"><div class="h">${lbl}</div><div class="slot free ${past?'past':''}" ${past?'':`onclick="openLift('${liftDay}',${h})"`}>${past?'':'open'}</div></div>`;
   }
@@ -965,9 +995,9 @@ function feedItems(){
 function renderForum(){
   const items=feedItems(); $('forumSub').textContent=`${S.posts.length} posts · ${S.polls.length} polls`;
   $('forumBody').innerHTML = items.length ? items.map(i=>{
-    if(i.kind==='poll'){ const p=i.p; return `<div class="post"><div class="post-meta"><div class="avatar sm">${initials(nameOf(p.created_by))}</div><span class="n">${esc(nameOf(p.created_by))}</span><span class="tag poll">poll</span><span class="d">${ago(p.created_at)}</span></div><div class="post-body" style="font-weight:500">${esc(p.question)}</div>${renderPollOptions(p)}</div>`; }
+    if(i.kind==='poll'){ const p=i.p; return `<div class="post"><div class="post-meta">${av(p.created_by,"sm")}<span class="n">${esc(nameOf(p.created_by))}</span><span class="tag poll">poll</span><span class="d">${ago(p.created_at)}</span></div><div class="post-body" style="font-weight:500">${esc(p.question)}</div>${renderPollOptions(p)}</div>`; }
     const p=i.p; const rc=S.replies.filter(r=>r.post_id===p.id).length; const poll=S.polls.find(x=>x.post_id===p.id);
-    return `<div class="post ${p.pinned?'pinned':''}" onclick="openThread('${p.id}')"><div class="post-meta"><div class="avatar sm">${initials(nameOf(p.user_id))}</div><span class="n">${esc(nameOf(p.user_id))}</span>${p.pinned?'<span class="tag pinned">pinned</span>':''}<span class="d">${ago(p.created_at)}</span></div><div class="post-body">${esc(p.body)}</div>${poll?`<div style="margin-top:8px;font-weight:500">${esc(poll.question)}</div>${renderPollOptions(poll)}`:''}<div class="post-foot"><span>${rc} repl${rc===1?'y':'ies'}</span></div></div>`;
+    return `<div class="post ${p.pinned?'pinned':''}" onclick="openThread('${p.id}')"><div class="post-meta">${av(p.user_id,"sm")}<span class="n">${esc(nameOf(p.user_id))}</span>${p.pinned?'<span class="tag pinned">pinned</span>':''}<span class="d">${ago(p.created_at)}</span></div><div class="post-body">${esc(p.body)}</div>${poll?`<div style="margin-top:8px;font-weight:500">${esc(poll.question)}</div>${renderPollOptions(poll)}`:''}<div class="post-foot"><span>${rc} repl${rc===1?'y':'ies'}</span></div></div>`;
   }).join('') : `<div class="empty"><b>Nothing posted</b>Start the conversation.</div>`;
 }
 function openPost(){ $('poBody').value=''; $('poIsPoll').checked=false; $('poPoll').classList.add('hidden'); $('poQ').value=''; $('poOpts').innerHTML='<input class="inp" placeholder="Option 1"><input class="inp" placeholder="Option 2">'; $('poErr').textContent=''; openMov('movPost'); setTimeout(()=>$('poBody').focus(),250); }
@@ -990,10 +1020,10 @@ function renderThread(){
   const rs=S.replies.filter(r=>r.post_id===p.id).sort((a,b)=>a.created_at.localeCompare(b.created_at)); const poll=S.polls.find(x=>x.post_id===p.id);
   const canMod = p.user_id===me() || isOwner();
   $('threadModal').innerHTML=`<div class="modal-hd"><div class="modal-title">Thread</div><button class="modal-x" onclick="closeMov('movThread')">×</button></div>
-    <div class="post-meta"><div class="avatar sm">${initials(nameOf(p.user_id))}</div><span class="n">${esc(nameOf(p.user_id))}</span>${p.pinned?'<span class="tag pinned">pinned</span>':''}<span class="d">${fmtWhen(p.created_at)}</span></div>
+    <div class="post-meta">${av(p.user_id,"sm")}<span class="n">${esc(nameOf(p.user_id))}</span>${p.pinned?'<span class="tag pinned">pinned</span>':''}<span class="d">${fmtWhen(p.created_at)}</span></div>
     <div class="post-body">${esc(p.body)}</div>${poll?`<div style="margin-top:8px;font-weight:500">${esc(poll.question)}</div>${renderPollOptions(poll)}`:''}
     ${canMod?`<div class="post-foot">${isOwner()?`<button class="panel-link" onclick="togglePin('${p.id}')">${p.pinned?'Unpin':'Pin'}</button>`:''}<button class="panel-link" style="color:var(--danger)" onclick="deletePost('${p.id}')">Delete</button></div>`:''}
-    <div style="margin-top:14px">${rs.map(r=>`<div class="reply"><div class="post-meta" style="margin-bottom:4px"><div class="avatar sm">${initials(nameOf(r.user_id))}</div><span class="n">${esc(nameOf(r.user_id))}</span><span class="d">${ago(r.created_at)}</span></div><div class="post-body">${esc(r.body)}</div></div>`).join('')||`<div class="empty">No replies yet.</div>`}</div>
+    <div style="margin-top:14px">${rs.map(r=>`<div class="reply"><div class="post-meta" style="margin-bottom:4px">${av(r.user_id,"sm")}<span class="n">${esc(nameOf(r.user_id))}</span><span class="d">${ago(r.created_at)}</span></div><div class="post-body">${esc(r.body)}</div></div>`).join('')||`<div class="empty">No replies yet.</div>`}</div>
     <div class="reply-box"><input class="inp" id="rpBody" placeholder="Reply…" onkeydown="if(event.key==='Enter')sendReply()"><button class="btn sm" onclick="sendReply()">Send</button></div>`;
 }
 async function sendReply(){
@@ -1021,10 +1051,41 @@ async function saveReceipt(){
 }
 async function deleteReceipt(id){ if(!confirm('Remove this entry?')) return; try{ await db.remove(TABLES.receipts,id); S.receipts=S.receipts.filter(r=>r.id!==id); renderCurrent(); toast('Removed'); }catch(e){ toast('Could not remove'); } }
 
+/* ═══ PROFILE ═══ */
+let _pendingPic;
+function openProfile(){
+  closeUserMenu(); const p=S.profile||{}; _pendingPic=p.avatar_url||'';
+  $('pfDisplay').value=p.display_name||''; $('pfRoad').value=p.road_name||''; $('pfBikes').value=p.bikes||''; $('pfErr2').textContent='';
+  drawPfAvatar(); openMov('movProfile');
+}
+function drawPfAvatar(){ $('pfAvatar').innerHTML=_pendingPic?`<img src="${_pendingPic}" alt="">`:initials($('pfDisplay').value||myName()); $('pfPicClear').classList.toggle('hidden',!_pendingPic); }
+function clearPic(){ _pendingPic=''; $('pfPic').value=''; drawPfAvatar(); }
+function pickPic(input){
+  const f=input.files&&input.files[0]; if(!f) return;
+  const img=new Image(); const url=URL.createObjectURL(f);
+  img.onload=()=>{ const SZ=160; const c=document.createElement('canvas'); c.width=c.height=SZ; const x=c.getContext('2d');
+    const m=Math.min(img.width,img.height); x.drawImage(img,(img.width-m)/2,(img.height-m)/2,m,m,0,0,SZ,SZ);
+    _pendingPic=c.toDataURL('image/jpeg',0.82); URL.revokeObjectURL(url); drawPfAvatar(); };
+  img.onerror=()=>{ $('pfErr2').textContent='Could not read that image.'; };
+  img.src=url;
+}
+async function saveProfile(){
+  const display_name=$('pfDisplay').value.trim(); if(!display_name){ $('pfErr2').textContent='Name is required.'; return; }
+  const row={ id:me(), email:S.user.email, display_name, road_name:$('pfRoad').value.trim()||null, bikes:$('pfBikes').value.trim()||null, avatar_url:_pendingPic||null };
+  try{
+    if(LOCAL){ LS.set('profile', row); }
+    else { const { error } = await sb.from('profiles').upsert(row); if(error) throw error; }
+    S.profile={ ...S.profile, ...row };
+    const m=S.members.find(x=>x.user_id===me()); if(m) Object.assign(m,{ name:display_name, road_name:row.road_name||'', bikes:row.bikes||'', avatar_url:row.avatar_url||'' });
+    $('userAvatar').innerHTML = row.avatar_url ? `<img src="${row.avatar_url}" alt="">` : initials(display_name);
+    closeMov('movProfile'); renderCurrent(); toast('Profile saved');
+  }catch(e){ $('pfErr2').textContent=e.message||'Could not save.'; }
+}
+
 /* ═══ CREW / INVITE ═══ */
 function openInvite(){ closeUserMenu(); $('invGarage').textContent=S.garage.name; $('invCode').textContent=LOCAL?'local mode':S.garage.invite_code; openMov('movInvite'); }
 function copyInvite(){ navigator.clipboard?.writeText(S.garage.invite_code||'').then(()=>toast('Copied')); }
-function openMembers(){ closeUserMenu(); const ms=[...S.members].sort((a,b)=>(a.role==='owner'?-1:1)); $('membersList').innerHTML=ms.map(m=>`<div class="row"><div class="avatar sm">${initials(m.name)}</div><div class="grow"><div class="t">${esc(m.name)}</div><div class="s">${m.role}</div></div></div>`).join('')||`<div class="empty">Just you so far.</div>`; openMov('movMembers'); }
+function openMembers(){ closeUserMenu(); const ms=[...S.members].sort((a,b)=>(a.role==='owner'?-1:1)); $('membersList').innerHTML=ms.map(m=>`<div class="row">${av(m.user_id,'')}<div class="grow"><div class="t">${esc(m.name)}${m.road_name?` <span class="road">“${esc(m.road_name)}”</span>`:''}</div><div class="s">${m.role}${m.bikes?' · '+esc(m.bikes):''}</div></div></div>`).join('')||`<div class="empty">Just you so far.</div>`; openMov('movMembers'); }
 
 /* ═══ PWA ═══ */
 if('serviceWorker' in navigator){ window.addEventListener('load', ()=>navigator.serviceWorker.register('sw.js').catch(()=>{})); }
