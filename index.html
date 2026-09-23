@@ -109,6 +109,23 @@ header .wordmark{font-size:24px;}
 .pf-top{display:flex;align-items:center;gap:14px;margin-bottom:14px;}
 .pf-top input[type=file]{display:none;}
 .road{font-family:var(--mono);font-size:12px;color:var(--accent);}
+.bike{display:flex;gap:12px;align-items:center;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;margin-top:8px;}
+.bike .ph{width:64px;height:48px;border-radius:6px;background:var(--panel2);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:22px;overflow:hidden;}
+.bike .ph img{width:100%;height:100%;object-fit:cover;}
+.bike .bn{font-family:var(--disp);font-weight:600;font-size:17px;line-height:1.1;}
+.bike .bs{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:3px;}
+.bike.tap{cursor:pointer;}
+.bike.tap:hover{border-color:var(--accent);}
+.bike-ph{width:100%;height:150px;border-radius:10px;background:var(--bg);border:1px dashed var(--line);display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer;color:var(--muted);font-size:13px;}
+.bike-ph img{width:100%;height:100%;object-fit:cover;}
+.member-hd{display:flex;align-items:center;gap:14px;margin-bottom:12px;}
+.member-hd .nm{font-family:var(--disp);font-weight:700;font-size:24px;line-height:1;}
+.role-pill{font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:4px;border:1px solid var(--line);color:var(--muted);}
+.role-pill.owner{border-color:var(--accent);color:var(--accent);}
+.role-pill.manager{border-color:var(--ok);color:var(--ok);}
+.role-pill.prospect{border-color:var(--warn);color:var(--warn);}
+.role-pill.hangaround{border-color:var(--muted);}
+.tag.vis{border-style:dashed;}
 .user-badge{display:flex;align-items:center;gap:7px;cursor:pointer;}
 .user-menu{position:fixed;top:calc(var(--hh) + 6px + env(safe-area-inset-top,0));right:12px;background:var(--panel);border:1px solid var(--line);border-radius:10px;min-width:220px;padding:6px;display:none;z-index:120;box-shadow:0 10px 30px rgba(0,0,0,.4);}
 .user-menu.open{display:block;}
@@ -478,6 +495,7 @@ header .wordmark{font-size:24px;}
     </div>
     <div class="field"><label>Where</label><input class="inp" id="evWhere" placeholder="The garage"></div>
     <div class="field"><label>Notes</label><textarea class="inp" id="evNotes" placeholder="Bring a chair. BYO."></textarea></div>
+    <div class="field"><label>Who can see this</label><div class="seg sm" id="evVis"><button data-v="hangaround" onclick="segPick('evVis',this)">Everyone</button><button data-v="prospect" onclick="segPick('evVis',this)">Prospects+</button><button class="active" data-v="member" onclick="segPick('evVis',this)">Members</button></div></div>
     <div class="err" id="evErr"></div>
     <div class="actions"><button class="btn danger hidden" id="evDelBtn" onclick="deleteEvent()">Delete</button><button class="btn" onclick="saveEvent()">Save event</button></div>
   </div>
@@ -506,6 +524,7 @@ header .wordmark{font-size:24px;}
       <div class="field"><label>Question</label><input class="inp" id="poQ" placeholder="Where are we riding Saturday?"></div>
       <div class="field"><label>Options</label><div class="opt-list" id="poOpts"><input class="inp" placeholder="Option 1"><input class="inp" placeholder="Option 2"></div><button class="panel-link" onclick="addPollOpt()">+ Add option</button></div>
     </div>
+    <div class="field" style="margin-top:8px"><label>Who can see this</label><div class="seg sm" id="poVis"><button data-v="hangaround" onclick="segPick('poVis',this)">Everyone</button><button data-v="prospect" onclick="segPick('poVis',this)">Prospects+</button><button class="active" data-v="member" onclick="segPick('poVis',this)">Members</button></div></div>
     <div class="err" id="poErr"></div>
     <div class="actions"><button class="btn" onclick="savePost()">Post</button></div>
   </div>
@@ -572,10 +591,33 @@ header .wordmark{font-size:24px;}
     </div>
     <div class="field"><label>Name</label><input class="inp" id="pfDisplay" maxlength="32" placeholder="Blake"></div>
     <div class="field"><label>Road name <span style="opacity:.6">(if you've got one)</span></label><input class="inp" id="pfRoad" maxlength="24" placeholder="Yeet"></div>
-    <div class="field"><label>Motorcycles</label><textarea class="inp" id="pfBikes" placeholder="'19 Road Glide, '78 CB750…"></textarea></div>
+    <div class="field"><label>My bikes</label><div id="pfBikeList"></div><button class="panel-link" style="margin-top:8px" onclick="openBike()">+ Add a bike</button></div>
     <div class="err" id="pfErr2"></div>
     <div class="actions"><button class="btn" onclick="saveProfile()">Save profile</button></div>
   </div>
+</div>
+
+<div class="mov" id="movBike" onclick="if(event.target===this)closeMov('movBike')">
+  <div class="modal">
+    <div class="modal-hd"><div class="modal-title" id="bkHd">Add a bike</div><button class="modal-x" onclick="closeMov('movBike')">×</button></div>
+    <div class="field"><label for="bkPic" class="bike-ph" id="bkPhoto">Tap to add a photo</label><input type="file" id="bkPic" accept="image/*" style="display:none" onchange="pickBikePic(this)"></div>
+    <div class="field-row">
+      <div class="field"><label>Year</label><input class="inp mono" id="bkYear" inputmode="numeric" maxlength="4" placeholder="2019"></div>
+      <div class="field"><label>Make</label><input class="inp" id="bkMake" placeholder="Harley-Davidson"></div>
+    </div>
+    <div class="field"><label>Model</label><input class="inp" id="bkModel" placeholder="Road Glide"></div>
+    <div class="field-row">
+      <div class="field"><label>Nickname <span style="opacity:.6">(optional)</span></label><input class="inp" id="bkName" placeholder="The Beast"></div>
+      <div class="field"><label>Mileage</label><input class="inp mono" id="bkMiles" type="number" inputmode="numeric" min="0" placeholder="12400"></div>
+    </div>
+    <div class="field"><label>Notes</label><textarea class="inp" id="bkNotes" placeholder="Stage 1, 2-into-1, needs a rear tire soon…" style="min-height:64px"></textarea></div>
+    <div class="err" id="bkErr"></div>
+    <div class="actions"><button class="btn danger hidden" id="bkDel" onclick="deleteBike()">Delete</button><button class="btn" onclick="saveBike()">Save bike</button></div>
+  </div>
+</div>
+
+<div class="mov" id="movMember" onclick="if(event.target===this)closeMov('movMember')">
+  <div class="modal" id="memberModal"></div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -615,7 +657,7 @@ function segVal(segId){ return $(segId).querySelector('button.active')?.dataset.
 function setSync(state, lbl){ const d=$('syncDot'); d.className='sync-dot '+state; if(lbl) $('syncLbl').textContent=lbl; }
 
 /* ═══ STATE ═══ */
-const S = { user:null, profile:null, garage:null, members:[], events:[], rsvps:[], lifts:[], posts:[], replies:[], polls:[], votes:[], receipts:[] };
+const S = { user:null, profile:null, garage:null, members:[], events:[], rsvps:[], lifts:[], posts:[], replies:[], polls:[], votes:[], receipts:[], bikes:[] };
 let mainView='board', calFilter='all', forumFilter='all', calCursor=new Date(), calSel=todayYmd(), liftDay=todayYmd(), editEventId=null, openThreadId=null;
 const BOARD_WIDGETS = [
   {id:'fund', label:'Fund balance'},
@@ -633,8 +675,8 @@ const THEMES = [
 
 /* ═══ DATA LAYER — same API over Supabase or localStorage ═══ */
 const LS = { get:(k,d)=>{ try{ const v=localStorage.getItem('g43_'+k); return v?JSON.parse(v):d; }catch(e){ return d; } }, set:(k,v)=>{ try{ localStorage.setItem('g43_'+k, JSON.stringify(v)); }catch(e){} } };
-const TABLES = { events:'garage_events', rsvps:'event_rsvps', lifts:'lift_bookings', posts:'garage_posts', replies:'garage_replies', polls:'garage_polls', votes:'poll_votes', receipts:'garage_receipts' };
-const GARAGE_SCOPED = new Set(['garage_events','lift_bookings','garage_posts','garage_polls','garage_receipts']);
+const TABLES = { events:'garage_events', rsvps:'event_rsvps', lifts:'lift_bookings', posts:'garage_posts', replies:'garage_replies', polls:'garage_polls', votes:'poll_votes', receipts:'garage_receipts', bikes:'bikes' };
+const GARAGE_SCOPED = new Set(['garage_events','lift_bookings','garage_posts','garage_polls','garage_receipts','bikes']);
 
 const db = {
   async list(table){
@@ -661,30 +703,31 @@ const db = {
 async function loadAll(){
   setSync('syncing', LOCAL ? 'Local' : 'Syncing');
   try{
-    const [events, rsvps, lifts, posts, replies, polls, votes, receipts] = await Promise.all(
-      ['events','rsvps','lifts','posts','replies','polls','votes','receipts'].map(k => db.list(TABLES[k]).catch(e => { console.warn(k, e); return null; }))
+    const [events, rsvps, lifts, posts, replies, polls, votes, receipts, bikes] = await Promise.all(
+      ['events','rsvps','lifts','posts','replies','polls','votes','receipts','bikes'].map(k => db.list(TABLES[k]).catch(e => { console.warn(k, e); return null; }))
     );
     if(events) S.events=events; if(rsvps) S.rsvps=rsvps; if(lifts) S.lifts=lifts; if(posts) S.posts=posts;
-    if(replies) S.replies=replies; if(polls) S.polls=polls; if(votes) S.votes=votes; if(receipts) S.receipts=receipts;
+    if(replies) S.replies=replies; if(polls) S.polls=polls; if(votes) S.votes=votes; if(receipts) S.receipts=receipts; if(bikes) S.bikes=bikes;
     if(!LOCAL){
-      const { data:mems, error:me1 } = await sb.from('garage_members').select('user_id, role').eq('garage_id', S.garage.id);
+      const { data:mems, error:me1 } = await sb.from('garage_members').select('user_id, role, rank').eq('garage_id', S.garage.id);
       if(me1) console.warn('members', me1);
       const ids=(mems||[]).map(m=>m.user_id);
-      const { data:profs, error:me2 } = ids.length ? await sb.from('profiles').select('id, display_name, email, road_name, bikes, avatar_url').in('id', ids) : { data:[] };
+      const { data:profs, error:me2 } = ids.length ? await sb.from('profiles').select('id, display_name, email, road_name, avatar_url').in('id', ids) : { data:[] };
       if(me2) console.warn('profiles', me2);
-      S.members=(mems||[]).map(m=>{ const p=(profs||[]).find(x=>x.id===m.user_id); return { user_id:m.user_id, role:m.role, name:p?.display_name||p?.email||'Member', road_name:p?.road_name||'', bikes:p?.bikes||'', avatar_url:p?.avatar_url||'' }; });
+      S.members=(mems||[]).map(m=>{ const p=(profs||[]).find(x=>x.id===m.user_id); return { user_id:m.user_id, role:m.role, rank:m.rank||'member', name:p?.display_name||p?.email||'Member', road_name:p?.road_name||'', avatar_url:p?.avatar_url||'' }; });
     }
     setSync(LOCAL?'':'synced', LOCAL ? 'Local' : 'Synced');
   }catch(e){ console.error(e); setSync('error', 'Offline'); }
-  renderCurrent(); updateBadges();
+  applyRankUI(); renderCurrent(); updateBadges();
 }
+function applyRankUI(){ const ok=canSeeMoney(); $('bnLedger').classList.toggle('hidden',!ok); $('dtLedger').classList.toggle('hidden',!ok); if(!ok && mainView==='ledger') switchMain('board'); }
 function manualResync(){ if(LOCAL){ toast('Local mode: nothing to sync'); return; } loadAll().then(()=>toast('Synced')); }
 
 let _rt=null, _rtT=null;
 function subscribeRealtime(){
   if(LOCAL || _rt) return;
   _rt = sb.channel('g43-'+S.garage.id);
-  Object.values(TABLES).forEach(t => _rt.on('postgres_changes', { event:'*', schema:'public', table:t }, () => { clearTimeout(_rtT); _rtT=setTimeout(loadAll, 250); }));
+  [...Object.values(TABLES),'garage_members'].forEach(t => _rt.on('postgres_changes', { event:'*', schema:'public', table:t }, () => { clearTimeout(_rtT); _rtT=setTimeout(loadAll, 250); }));
   _rt.subscribe();
 }
 
@@ -693,6 +736,15 @@ function me(){ return S.user?.id; }
 function myName(){ return S.profile?.display_name || 'Me'; }
 function nameOf(userId){ if(userId===me()) return myName(); return S.members.find(m=>m.user_id===userId)?.name || 'Member'; }
 function isOwner(){ return LOCAL || S.garage?.owner_id===me(); }
+function myRole(){ if(isOwner()) return 'owner'; return S.members.find(m=>m.user_id===me())?.role || 'personnel'; }
+function isAdmin(){ return isOwner() || myRole()==='manager'; }
+const RANKS={hangaround:0,prospect:1,member:2}; const RANK_LBL={hangaround:'Everyone',prospect:'Prospects+',member:'Members'};
+function rankOf(userId){ const r=roleOf(userId); if(r==='owner'||r==='manager') return 'member'; return S.members.find(m=>m.user_id===userId)?.rank || 'member'; }
+function myRankLevel(){ return LOCAL ? 2 : RANKS[rankOf(me())] ?? 2; }
+function canSeeMoney(){ if(LOCAL||isOwner()) return true; return (S.members.find(m=>m.user_id===me())?.rank||'member')==='member'; }
+function canSee(row){ return myRankLevel() >= (RANKS[row.visibility||'member'] ?? 2); }
+function visTag(v){ v=v||'member'; return v==='member'?'':`<span class="tag vis">${RANK_LBL[v].toLowerCase()}</span>`; }
+function roleOf(userId){ if(userId===S.garage?.owner_id) return 'owner'; const r=S.members.find(m=>m.user_id===userId)?.role || 'personnel'; return r==='member'?'personnel':r; }
 
 /* ═══ AUTH FLOW ═══ */
 function showAuthForm(which){
@@ -756,7 +808,7 @@ function bootLocal(){
   S.user={ id:'local-user', email:'you@thisdevice' };
   S.profile=LS.get('profile', { id:'local-user', display_name:'You' });
   S.garage=LS.get('garage', { id:'local-garage', name:'Garage 43', owner_id:'local-user', invite_code:'local', dashboard_layout:null });
-  S.members=[{ user_id:'local-user', role:'owner', name:S.profile.display_name, road_name:S.profile.road_name||'', bikes:S.profile.bikes||'', avatar_url:S.profile.avatar_url||'' }];
+  S.members=[{ user_id:'local-user', role:'owner', rank:'member', name:S.profile.display_name, road_name:S.profile.road_name||'', avatar_url:S.profile.avatar_url||'' }];
   applyTheme(LS.get('theme','gunmetal'), false);
   if(!LS.get('seeded',false)) seedLocal();
   enterApp();
@@ -777,7 +829,7 @@ function enterApp(){
   $('authScreen').classList.add('hidden'); $('loading').classList.add('hidden');
   $('userAvatar').innerHTML = S.profile?.avatar_url ? `<img src="${S.profile.avatar_url}" alt="">` : initials(myName());
   $('userMenuEmail').textContent=S.user.email;
-  $('customizeItem').classList.toggle('hidden', !isOwner());
+  $('customizeItem').classList.toggle('hidden', !isAdmin());
   $('boardSub').textContent=S.garage.name;
   buildThemeGrid();
   loadAll().then(subscribeRealtime);
@@ -821,12 +873,12 @@ function updateBadges(){
 
 /* ═══ DERIVED ═══ */
 function balance(){ return S.receipts.reduce((s,r)=> s + (r.kind==='in' ? +r.amount : -r.amount), 0); }
-function upcomingEvents(){ const t=todayYmd(); return S.events.filter(e=>e.event_date>=t).sort((a,b)=> (a.event_date+a.start_time).localeCompare(b.event_date+b.start_time)); }
+function upcomingEvents(){ const t=todayYmd(); return S.events.filter(e=>canSee(e) && e.event_date>=t).sort((a,b)=> (a.event_date+a.start_time).localeCompare(b.event_date+b.start_time)); }
 function liftsOn(day){ return S.lifts.filter(l=>l.booking_date===day && l.status!=='cancelled').sort((a,b)=>a.start_time.localeCompare(b.start_time)); }
 function upcomingLifts(){ const t=todayYmd(); return S.lifts.filter(l=>l.booking_date>=t && l.status!=='cancelled').sort((a,b)=>(a.booking_date+a.start_time).localeCompare(b.booking_date+b.start_time)); }
 function pollVotes(pollId){ return S.votes.filter(v=>v.poll_id===pollId); }
 function myVote(pollId){ return S.votes.find(v=>v.poll_id===pollId && v.user_id===me()); }
-function openPolls(){ return S.polls.filter(p=>!myVote(p.id)).sort((a,b)=>b.created_at.localeCompare(a.created_at)); }
+function openPolls(){ return S.polls.filter(p=>canSee(p) && !myVote(p.id)).sort((a,b)=>b.created_at.localeCompare(a.created_at)); }
 function rsvpsFor(eventId){ return S.rsvps.filter(r=>r.event_id===eventId); }
 function myRsvp(eventId){ return S.rsvps.find(r=>r.event_id===eventId && r.user_id===me()); }
 function hourNum(t){ return +t.split(':')[0]; }
@@ -842,12 +894,13 @@ function renderBoard(){
   const parts=[];
   for(const w of boardLayout()){
     if(!w.enabled) continue;
+    if((w.id==='fund'||w.id==='receipts') && !canSeeMoney()) continue;
     if(w.id==='fund'){ const b=balance();
       parts.push(`<div class="panel"><div class="panel-hd"><div class="panel-title">Garage fund</div><button class="panel-link" onclick="switchMain('ledger')">Ledger</button></div><div class="big-num ${b<0?'neg':''}">${money(b)}</div><div class="vsub">${S.receipts.length} entries</div></div>`); }
     if(w.id==='event'){ const e=upcomingEvents()[0];
       if(!e) parts.push(`<div class="panel"><div class="panel-hd"><div class="panel-title">Next event</div><button class="panel-link" onclick="openEvent()">Add one</button></div><div class="empty">Nothing on the calendar yet.</div></div>`);
       else { const going=rsvpsFor(e.id).filter(r=>r.status==='going'); const mine=myRsvp(e.id)?.status;
-        parts.push(`<div class="panel"><div class="panel-hd"><div class="panel-title">${esc(e.title)}</div><span class="tag ${e.category}">${e.category}</span></div>
+        parts.push(`<div class="panel"><div class="panel-hd"><div class="panel-title">${esc(e.title)}</div><span>${visTag(e.visibility)} <span class="tag ${e.category}">${e.category}</span></span></div>
           <div class="kv"><span>When</span><span class="v">${fmtDate(e.event_date)} · ${fmtTime(e.start_time)}</span></div>
           ${e.location?`<div class="kv"><span>Where</span><span class="v">${esc(e.location)}</span></div>`:''}
           <div class="kv"><span>Going</span><span class="v">${going.length}${going.length?' — '+esc(going.map(r=>nameOf(r.user_id)).join(', ')):''}</span></div>
@@ -881,7 +934,7 @@ async function saveCustomize(){
   const lay=boardLayout(); lay.forEach(w=>{ const cb=$('cw_'+w.id); if(cb) w.enabled=cb.checked; });
   S.garage.dashboard_layout=lay;
   if(LOCAL) LS.set('garage', S.garage);
-  else { const { error } = await sb.from('garages').update({ dashboard_layout:lay }).eq('id', S.garage.id); if(error){ toast('Only the owner can change the board'); return; } }
+  else { const { error } = await sb.from('garages').update({ dashboard_layout:lay }).eq('id', S.garage.id); if(error){ toast('Only the owner or a manager can change the board'); return; } }
   closeMov('movCustomize'); renderBoard(); toast('Board saved');
 }
 
@@ -890,7 +943,7 @@ function setCalFilter(f){ calFilter=f; document.querySelectorAll('#calChips .chi
 function calShift(n){ calCursor=new Date(calCursor.getFullYear(), calCursor.getMonth()+n, 1); renderCal(); }
 function calItems(){
   const items=[];
-  if(calFilter!=='lift') S.events.forEach(e=>{ if(calFilter==='all'||e.category===calFilter) items.push({ kind:e.category, date:e.event_date, time:e.start_time, title:e.title, sub:e.location||'', id:e.id, ev:e }); });
+  if(calFilter!=='lift') S.events.filter(canSee).forEach(e=>{ if(calFilter==='all'||e.category===calFilter) items.push({ kind:e.category, date:e.event_date, time:e.start_time, title:e.title, sub:e.location||'', id:e.id, ev:e }); });
   if(calFilter==='all'||calFilter==='lift') S.lifts.filter(l=>l.status!=='cancelled').forEach(l=>items.push({ kind:'lift', date:l.booking_date, time:l.start_time, title:`Lift — ${nameOf(l.requested_by)}`, sub:(l.note||'')+` · until ${fmtTime(l.end_time)}` }));
   return items.sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
 }
@@ -906,7 +959,7 @@ function renderCal(){
   const upcoming=items.filter(i=>i.date>=t);
   $('calSub').textContent=`${upcoming.length} upcoming`;
   const dayItems=byDay[calSel]||[];
-  const list=(arr)=>arr.map(i=>`<div class="row" ${i.ev?`onclick="openEvent('${i.id}')" style="cursor:pointer"`:''}><span class="tag ${i.kind}">${i.kind}</span><div class="grow"><div class="t">${esc(i.title)}</div><div class="s">${fmtDate(i.date)} · ${fmtTime(i.time)}${i.sub?' · '+esc(i.sub):''}</div></div></div>`).join('');
+  const list=(arr)=>arr.map(i=>`<div class="row" ${i.ev?`onclick="openEvent('${i.id}')" style="cursor:pointer"`:''}><span class="tag ${i.kind}">${i.kind}</span>${i.ev?visTag(i.ev.visibility):''}<div class="grow"><div class="t">${esc(i.title)}</div><div class="s">${fmtDate(i.date)} · ${fmtTime(i.time)}${i.sub?' · '+esc(i.sub):''}</div></div></div>`).join('');
   $('calList').innerHTML=`<div class="panel"><div class="panel-hd"><div class="panel-title">${calSel===t?'Today':fmtLong(calSel)}</div><button class="panel-link" onclick="openEvent(null,'${calSel}')">Add event</button></div>${dayItems.length?list(dayItems):`<div class="empty">Nothing this day.</div>`}</div>
     <div class="panel"><div class="panel-hd"><div class="panel-title">Coming up</div></div>${upcoming.length?list(upcoming.slice(0,12)):`<div class="empty"><b>Quiet garage</b>Add a party or a meeting.</div>`}</div>`;
 }
@@ -915,15 +968,16 @@ function openEvent(id, date){
   $('evTitleHd').textContent=e?'Edit event':'New event';
   $('evTitle').value=e?.title||''; $('evDate').value=e?.event_date||date||calSel||todayYmd(); $('evTime').value=e?.start_time?.slice(0,5)||'18:00';
   $('evWhere').value=e?.location||''; $('evNotes').value=e?.notes||''; $('evErr').textContent='';
+  const vis=e?.visibility||'member'; $('evVis').querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.v===vis));
   const kind=e?.category||'party'; $('evKind').querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.v===kind));
-  $('evDelBtn').classList.toggle('hidden', !e || (e.created_by!==me() && !isOwner()));
+  $('evDelBtn').classList.toggle('hidden', !e || (e.created_by!==me() && !isAdmin()));
   openMov('movEvent'); setTimeout(()=>$('evTitle').focus(),250);
 }
 async function saveEvent(){
   const title=$('evTitle').value.trim(); if(!title){ $('evErr').textContent='Give it a name.'; return; }
   if(!$('evDate').value){ $('evErr').textContent='Pick a date.'; return; }
   const ex=editEventId?S.events.find(x=>x.id===editEventId):null;
-  const row={ id:ex?.id||uid(), garage_id:S.garage.id, title, category:segVal('evKind'), event_date:$('evDate').value, start_time:$('evTime').value||'18:00', location:$('evWhere').value.trim()||null, notes:$('evNotes').value.trim()||null, created_by:ex?.created_by||me(), created_at:ex?.created_at||new Date().toISOString() };
+  const row={ id:ex?.id||uid(), garage_id:S.garage.id, title, category:segVal('evKind'), event_date:$('evDate').value, start_time:$('evTime').value||'18:00', location:$('evWhere').value.trim()||null, notes:$('evNotes').value.trim()||null, visibility:segVal('evVis')||'member', created_by:ex?.created_by||me(), created_at:ex?.created_at||new Date().toISOString() };
   try{ await db.upsert(TABLES.events,row); if(ex) Object.assign(ex,row); else S.events.push(row); closeMov('movEvent'); calSel=row.event_date; renderCurrent(); updateBadges(); toast(ex?'Event updated':'Event added'); }
   catch(e){ $('evErr').textContent=e.message||'Could not save.'; }
 }
@@ -942,7 +996,7 @@ function renderLift(){
     const b=books.find(x=>hourNum(x.start_time)===h); const covered=books.find(x=>hourNum(x.start_time)<h && hourNum(x.end_time)>h);
     const lbl=`${h%12||12}${h>=12?'pm':'am'}`; const past = liftDay<t || (liftDay===t && h<nowH);
     if(b){ const span=hourNum(b.end_time)-hourNum(b.start_time); const mine=b.requested_by===me();
-      html+=`<div class="hour" style="min-height:${44*span}px"><div class="h">${lbl}</div><div class="slot"><div class="book ${mine?'mine':''}">${av(b.requested_by,"sm")}<div><div>${esc(nameOf(b.requested_by))}${b.note?' — '+esc(b.note):''}</div><div class="bt">${fmtTime(b.start_time)}–${fmtTime(b.end_time)}</div></div>${(mine||isOwner())?`<button class="rel" onclick="releaseLift('${b.id}')">Release</button>`:''}</div></div></div>`; }
+      html+=`<div class="hour" style="min-height:${44*span}px"><div class="h">${lbl}</div><div class="slot"><div class="book ${mine?'mine':''}">${av(b.requested_by,"sm")}<div><div>${esc(nameOf(b.requested_by))}${b.note?' — '+esc(b.note):''}</div><div class="bt">${fmtTime(b.start_time)}–${fmtTime(b.end_time)}</div></div>${(mine||isAdmin())?`<button class="rel" onclick="releaseLift('${b.id}')">Release</button>`:''}</div></div></div>`; }
     else if(covered){ /* inside a multi-hour block, already drawn */ }
     else html+=`<div class="hour"><div class="h">${lbl}</div><div class="slot free ${past?'past':''}" ${past?'':`onclick="openLift('${liftDay}',${h})"`}>${past?'':'open'}</div></div>`;
   }
@@ -988,19 +1042,19 @@ async function vote(pollId, idx){
 }
 function feedItems(){
   const items=[];
-  S.posts.forEach(p=>items.push({ kind:'post', at:p.created_at, p }));
-  S.polls.filter(p=>!p.post_id).forEach(p=>items.push({ kind:'poll', at:p.created_at, p }));
+  S.posts.filter(canSee).forEach(p=>items.push({ kind:'post', at:p.created_at, p }));
+  S.polls.filter(p=>!p.post_id && canSee(p)).forEach(p=>items.push({ kind:'poll', at:p.created_at, p }));
   return items.filter(i=>forumFilter==='all'||i.kind==='poll').sort((a,b)=>{ const pa=a.kind==='post'&&a.p.pinned, pb=b.kind==='post'&&b.p.pinned; if(pa!==pb) return pa?-1:1; return b.at.localeCompare(a.at); });
 }
 function renderForum(){
   const items=feedItems(); $('forumSub').textContent=`${S.posts.length} posts · ${S.polls.length} polls`;
   $('forumBody').innerHTML = items.length ? items.map(i=>{
-    if(i.kind==='poll'){ const p=i.p; return `<div class="post"><div class="post-meta">${av(p.created_by,"sm")}<span class="n">${esc(nameOf(p.created_by))}</span><span class="tag poll">poll</span><span class="d">${ago(p.created_at)}</span></div><div class="post-body" style="font-weight:500">${esc(p.question)}</div>${renderPollOptions(p)}</div>`; }
+    if(i.kind==='poll'){ const p=i.p; return `<div class="post"><div class="post-meta">${av(p.created_by,"sm")}<span class="n">${esc(nameOf(p.created_by))}</span><span class="tag poll">poll</span>${visTag(p.visibility)}<span class="d">${ago(p.created_at)}</span></div><div class="post-body" style="font-weight:500">${esc(p.question)}</div>${renderPollOptions(p)}</div>`; }
     const p=i.p; const rc=S.replies.filter(r=>r.post_id===p.id).length; const poll=S.polls.find(x=>x.post_id===p.id);
-    return `<div class="post ${p.pinned?'pinned':''}" onclick="openThread('${p.id}')"><div class="post-meta">${av(p.user_id,"sm")}<span class="n">${esc(nameOf(p.user_id))}</span>${p.pinned?'<span class="tag pinned">pinned</span>':''}<span class="d">${ago(p.created_at)}</span></div><div class="post-body">${esc(p.body)}</div>${poll?`<div style="margin-top:8px;font-weight:500">${esc(poll.question)}</div>${renderPollOptions(poll)}`:''}<div class="post-foot"><span>${rc} repl${rc===1?'y':'ies'}</span></div></div>`;
+    return `<div class="post ${p.pinned?'pinned':''}" onclick="openThread('${p.id}')"><div class="post-meta">${av(p.user_id,"sm")}<span class="n">${esc(nameOf(p.user_id))}</span>${p.pinned?'<span class="tag pinned">pinned</span>':''}${visTag(p.visibility)}<span class="d">${ago(p.created_at)}</span></div><div class="post-body">${esc(p.body)}</div>${poll?`<div style="margin-top:8px;font-weight:500">${esc(poll.question)}</div>${renderPollOptions(poll)}`:''}<div class="post-foot"><span>${rc} repl${rc===1?'y':'ies'}</span></div></div>`;
   }).join('') : `<div class="empty"><b>Nothing posted</b>Start the conversation.</div>`;
 }
-function openPost(){ $('poBody').value=''; $('poIsPoll').checked=false; $('poPoll').classList.add('hidden'); $('poQ').value=''; $('poOpts').innerHTML='<input class="inp" placeholder="Option 1"><input class="inp" placeholder="Option 2">'; $('poErr').textContent=''; openMov('movPost'); setTimeout(()=>$('poBody').focus(),250); }
+function openPost(){ $('poBody').value=''; $('poIsPoll').checked=false; $('poPoll').classList.add('hidden'); $('poQ').value=''; $('poOpts').innerHTML='<input class="inp" placeholder="Option 1"><input class="inp" placeholder="Option 2">'; $('poErr').textContent=''; $('poVis').querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.v==='member')); openMov('movPost'); setTimeout(()=>$('poBody').focus(),250); }
 function addPollOpt(){ const n=$('poOpts').children.length+1; if(n>6) return; const i=document.createElement('input'); i.className='inp'; i.placeholder='Option '+n; $('poOpts').appendChild(i); }
 async function savePost(){
   const body=$('poBody').value.trim(); const isPoll=$('poIsPoll').checked;
@@ -1009,8 +1063,8 @@ async function savePost(){
   if(isPoll && (!q || opts.length<2)){ $('poErr').textContent='A poll needs a question and at least two options.'; return; }
   try{
     let post=null;
-    if(body){ post={ id:uid(), garage_id:S.garage.id, user_id:me(), body, pinned:false, created_at:new Date().toISOString(), updated_at:new Date().toISOString() }; await db.upsert(TABLES.posts,post); S.posts.push(post); }
-    if(isPoll){ const poll={ id:uid(), garage_id:S.garage.id, post_id:post?.id||null, question:q, options:opts, created_by:me(), created_at:new Date().toISOString() }; await db.upsert(TABLES.polls,poll); S.polls.push(poll); }
+    if(body){ post={ id:uid(), garage_id:S.garage.id, user_id:me(), body, pinned:false, visibility:segVal('poVis')||'member', created_at:new Date().toISOString(), updated_at:new Date().toISOString() }; await db.upsert(TABLES.posts,post); S.posts.push(post); }
+    if(isPoll){ const poll={ id:uid(), garage_id:S.garage.id, post_id:post?.id||null, question:q, options:opts, visibility:segVal('poVis')||'member', created_by:me(), created_at:new Date().toISOString() }; await db.upsert(TABLES.polls,poll); S.polls.push(poll); }
     closeMov('movPost'); renderCurrent(); updateBadges(); toast('Posted');
   }catch(e){ $('poErr').textContent=e.message||'Could not post.'; }
 }
@@ -1018,11 +1072,11 @@ function openThread(id){ openThreadId=id; renderThread(); openMov('movThread'); 
 function renderThread(){
   const p=S.posts.find(x=>x.id===openThreadId); if(!p){ closeMov('movThread'); return; }
   const rs=S.replies.filter(r=>r.post_id===p.id).sort((a,b)=>a.created_at.localeCompare(b.created_at)); const poll=S.polls.find(x=>x.post_id===p.id);
-  const canMod = p.user_id===me() || isOwner();
+  const canMod = p.user_id===me() || isAdmin();
   $('threadModal').innerHTML=`<div class="modal-hd"><div class="modal-title">Thread</div><button class="modal-x" onclick="closeMov('movThread')">×</button></div>
     <div class="post-meta">${av(p.user_id,"sm")}<span class="n">${esc(nameOf(p.user_id))}</span>${p.pinned?'<span class="tag pinned">pinned</span>':''}<span class="d">${fmtWhen(p.created_at)}</span></div>
     <div class="post-body">${esc(p.body)}</div>${poll?`<div style="margin-top:8px;font-weight:500">${esc(poll.question)}</div>${renderPollOptions(poll)}`:''}
-    ${canMod?`<div class="post-foot">${isOwner()?`<button class="panel-link" onclick="togglePin('${p.id}')">${p.pinned?'Unpin':'Pin'}</button>`:''}<button class="panel-link" style="color:var(--danger)" onclick="deletePost('${p.id}')">Delete</button></div>`:''}
+    ${canMod?`<div class="post-foot">${isAdmin()?`<button class="panel-link" onclick="togglePin('${p.id}')">${p.pinned?'Unpin':'Pin'}</button>`:''}<button class="panel-link" style="color:var(--danger)" onclick="deletePost('${p.id}')">Delete</button></div>`:''}
     <div style="margin-top:14px">${rs.map(r=>`<div class="reply"><div class="post-meta" style="margin-bottom:4px">${av(r.user_id,"sm")}<span class="n">${esc(nameOf(r.user_id))}</span><span class="d">${ago(r.created_at)}</span></div><div class="post-body">${esc(r.body)}</div></div>`).join('')||`<div class="empty">No replies yet.</div>`}</div>
     <div class="reply-box"><input class="inp" id="rpBody" placeholder="Reply…" onkeydown="if(event.key==='Enter')sendReply()"><button class="btn sm" onclick="sendReply()">Send</button></div>`;
 }
@@ -1031,7 +1085,7 @@ async function sendReply(){
   const row={ id:uid(), post_id:openThreadId, user_id:me(), body, created_at:new Date().toISOString() };
   try{ await db.upsert(TABLES.replies,row); S.replies.push(row); renderThread(); renderForum(); }catch(e){ toast('Could not reply'); }
 }
-async function togglePin(id){ const p=S.posts.find(x=>x.id===id); try{ await db.upsert(TABLES.posts,{ ...p, pinned:!p.pinned }); p.pinned=!p.pinned; renderThread(); renderForum(); }catch(e){ toast('Only the owner can pin'); } }
+async function togglePin(id){ const p=S.posts.find(x=>x.id===id); try{ await db.upsert(TABLES.posts,{ ...p, pinned:!p.pinned }); p.pinned=!p.pinned; renderThread(); renderForum(); }catch(e){ toast('Only the owner or a manager can pin'); } }
 async function deletePost(id){ if(!confirm('Delete this post?')) return; try{ await db.remove(TABLES.posts,id); S.posts=S.posts.filter(p=>p.id!==id); closeMov('movThread'); renderForum(); toast('Post deleted'); }catch(e){ toast('Could not delete'); } }
 
 /* ═══ LEDGER ═══ */
@@ -1040,7 +1094,7 @@ function renderLedger(){
   let run=0; const withBal=rows.map(r=>{ run+= r.kind==='in'?+r.amount:-r.amount; return { ...r, run }; }).reverse();
   const inn=rows.filter(r=>r.kind==='in').reduce((s,r)=>s+ +r.amount,0), out=rows.filter(r=>r.kind==='out').reduce((s,r)=>s+ +r.amount,0);
   $('ledgerHd').innerHTML=`<div class="cell bal"><div class="lbl">Fund balance</div><div class="val ${run<0?'neg':''}" style="${run<0?'color:var(--danger)':''}">${money(run)}</div></div><div class="cell"><div class="lbl">Paid in</div><div class="val" style="color:var(--ok)">${money(inn)}</div></div><div class="cell"><div class="lbl">Spent</div><div class="val">${money(out)}</div></div><div class="cell"><div class="lbl">Entries</div><div class="val">${rows.length}</div></div>`;
-  $('ledgerList').innerHTML = withBal.length ? withBal.map(r=>`<div class="ledger-row"><div class="grow"><div class="t">${esc(r.memo)}</div><div class="s mono" style="font-size:12px;color:var(--muted)">${fmtDate(r.receipt_date)} · ${esc(nameOf(r.user_id))}${(r.user_id===me()||isOwner())?` · <button class="panel-link" style="color:var(--danger);font-size:12px" onclick="deleteReceipt('${r.id}')">remove</button>`:''}</div></div><div class="amt ${r.kind}">${r.kind==='in'?'+':'−'}${money(r.amount)}</div><div class="bal">${money(r.run)}</div></div>`).join('') : `<div class="empty"><b>Empty ledger</b>Log the first receipt.</div>`;
+  $('ledgerList').innerHTML = withBal.length ? withBal.map(r=>`<div class="ledger-row"><div class="grow"><div class="t">${esc(r.memo)}</div><div class="s mono" style="font-size:12px;color:var(--muted)">${fmtDate(r.receipt_date)} · ${esc(nameOf(r.user_id))}${(r.user_id===me()||isAdmin())?` · <button class="panel-link" style="color:var(--danger);font-size:12px" onclick="deleteReceipt('${r.id}')">remove</button>`:''}</div></div><div class="amt ${r.kind}">${r.kind==='in'?'+':'−'}${money(r.amount)}</div><div class="bal">${money(r.run)}</div></div>`).join('') : `<div class="empty"><b>Empty ledger</b>Log the first receipt.</div>`;
 }
 function openReceipt(){ $('rcAmt').value=''; $('rcMemo').value=''; $('rcDate').value=todayYmd(); $('rcErr').textContent=''; $('rcKind').querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.v==='out')); openMov('movReceipt'); setTimeout(()=>$('rcAmt').focus(),250); }
 async function saveReceipt(){
@@ -1055,7 +1109,7 @@ async function deleteReceipt(id){ if(!confirm('Remove this entry?')) return; try
 let _pendingPic;
 function openProfile(){
   closeUserMenu(); const p=S.profile||{}; _pendingPic=p.avatar_url||'';
-  $('pfDisplay').value=p.display_name||''; $('pfRoad').value=p.road_name||''; $('pfBikes').value=p.bikes||''; $('pfErr2').textContent='';
+  $('pfDisplay').value=p.display_name||''; $('pfRoad').value=p.road_name||''; $('pfErr2').textContent=''; renderPfBikes();
   drawPfAvatar(); openMov('movProfile');
 }
 function drawPfAvatar(){ $('pfAvatar').innerHTML=_pendingPic?`<img src="${_pendingPic}" alt="">`:initials($('pfDisplay').value||myName()); $('pfPicClear').classList.toggle('hidden',!_pendingPic); }
@@ -1071,21 +1125,87 @@ function pickPic(input){
 }
 async function saveProfile(){
   const display_name=$('pfDisplay').value.trim(); if(!display_name){ $('pfErr2').textContent='Name is required.'; return; }
-  const row={ id:me(), email:S.user.email, display_name, road_name:$('pfRoad').value.trim()||null, bikes:$('pfBikes').value.trim()||null, avatar_url:_pendingPic||null };
+  const row={ id:me(), email:S.user.email, display_name, road_name:$('pfRoad').value.trim()||null, avatar_url:_pendingPic||null };
   try{
     if(LOCAL){ LS.set('profile', row); }
     else { const { error } = await sb.from('profiles').upsert(row); if(error) throw error; }
     S.profile={ ...S.profile, ...row };
-    const m=S.members.find(x=>x.user_id===me()); if(m) Object.assign(m,{ name:display_name, road_name:row.road_name||'', bikes:row.bikes||'', avatar_url:row.avatar_url||'' });
+    const m=S.members.find(x=>x.user_id===me()); if(m) Object.assign(m,{ name:display_name, road_name:row.road_name||'', avatar_url:row.avatar_url||'' });
     $('userAvatar').innerHTML = row.avatar_url ? `<img src="${row.avatar_url}" alt="">` : initials(display_name);
     closeMov('movProfile'); renderCurrent(); toast('Profile saved');
   }catch(e){ $('pfErr2').textContent=e.message||'Could not save.'; }
 }
 
+/* ═══ BIKES ═══ */
+let _bikePic='', editBikeId=null;
+function bikesOf(userId){ return S.bikes.filter(b=>b.added_by===userId).sort((a,b)=>(a.created_at||'').localeCompare(b.created_at||'')); }
+function bikeTitle(b){ return [b.year, b.make, b.model].filter(Boolean).join(' ') || b.name || 'Bike'; }
+function bikeCard(b, tap){ return `<div class="bike ${tap?'tap':''}" ${tap?`onclick="openBike('${b.id}')"`:''}><div class="ph">${b.photo_url?`<img src="${b.photo_url}" alt="">`:'🏍'}</div><div class="grow"><div class="bn">${esc(b.name||bikeTitle(b))}</div><div class="bs">${[b.name?esc(bikeTitle(b)):'', b.current_mileage?(+b.current_mileage).toLocaleString()+' mi':'', b.notes?esc(b.notes):''].filter(Boolean).join(' · ')||'&nbsp;'}</div></div></div>`; }
+function renderPfBikes(){ const bs=bikesOf(me()); $('pfBikeList').innerHTML = bs.length ? bs.map(b=>bikeCard(b,true)).join('') : `<div class="vsub">No bikes yet.</div>`; }
+function openBike(id){
+  editBikeId=id||null; const b=id?S.bikes.find(x=>x.id===id):null;
+  $('bkHd').textContent=b?'Edit bike':'Add a bike';
+  $('bkYear').value=b?.year||''; $('bkMake').value=b?.make||''; $('bkModel').value=b?.model||''; $('bkName').value=b?.name||''; $('bkMiles').value=b?.current_mileage||''; $('bkNotes').value=b?.notes||''; $('bkErr').textContent='';
+  _bikePic=b?.photo_url||''; $('bkPic').value=''; drawBikePic(); $('bkDel').classList.toggle('hidden',!b);
+  openMov('movBike');
+}
+function drawBikePic(){ $('bkPhoto').innerHTML=_bikePic?`<img src="${_bikePic}" alt="">`:'Tap to add a photo'; }
+function pickBikePic(input){
+  const f=input.files&&input.files[0]; if(!f) return; const img=new Image(); const url=URL.createObjectURL(f);
+  img.onload=()=>{ const W=480,H=320; const c=document.createElement('canvas'); c.width=W; c.height=H; const x=c.getContext('2d');
+    const r=Math.max(W/img.width,H/img.height); const w=img.width*r,h=img.height*r; x.drawImage(img,(W-w)/2,(H-h)/2,w,h);
+    _bikePic=c.toDataURL('image/jpeg',0.78); URL.revokeObjectURL(url); drawBikePic(); };
+  img.src=url;
+}
+async function saveBike(){
+  const make=$('bkMake').value.trim(), model=$('bkModel').value.trim(), name=$('bkName').value.trim();
+  if(!model && !name){ $('bkErr').textContent='Give it at least a model or a nickname.'; return; }
+  const ex=editBikeId?S.bikes.find(x=>x.id===editBikeId):null;
+  const row={ id:ex?.id||uid(), garage_id:S.garage.id, added_by:me(), name:name||[$('bkYear').value.trim(),make,model].filter(Boolean).join(' '), year:$('bkYear').value.trim()||null, make:make||null, model:model||null, current_mileage:parseInt($('bkMiles').value)||0, notes:$('bkNotes').value.trim()||null, photo_url:_bikePic||null, created_at:ex?.created_at||new Date().toISOString() };
+  try{ await db.upsert(TABLES.bikes,row); if(ex) Object.assign(ex,row); else S.bikes.push(row); closeMov('movBike'); renderPfBikes(); toast(ex?'Bike updated':'Bike added'); }
+  catch(e){ $('bkErr').textContent=e.message||'Could not save.'; }
+}
+async function deleteBike(){
+  if(!editBikeId || !confirm('Remove this bike?')) return;
+  try{ await db.remove(TABLES.bikes,editBikeId); S.bikes=S.bikes.filter(b=>b.id!==editBikeId); closeMov('movBike'); renderPfBikes(); toast('Bike removed'); }catch(e){ $('bkErr').textContent=e.message; }
+}
+
+/* ═══ MEMBER DETAIL / ROLES ═══ */
+function openMember(userId){
+  const m=S.members.find(x=>x.user_id===userId); if(!m) return; const role=roleOf(userId); const bs=bikesOf(userId);
+  const canManage = isOwner() && userId!==me() && role!=='owner'; const rank=rankOf(userId);
+  $('memberModal').innerHTML=`<div class="modal-hd"><div class="modal-title">Crew member</div><button class="modal-x" onclick="closeMov('movMember')">×</button></div>
+    <div class="member-hd">${av(userId,'lg')}<div><div class="nm">${esc(m.name)}</div>${m.road_name?`<div class="road" style="margin-top:4px">“${esc(m.road_name)}”</div>`:''}<div style="margin-top:6px"><span class="role-pill ${rank}">${rank}</span> ${role!=='personnel'?`<span class="role-pill ${role}">${role}</span>`:''}</div></div></div>
+    <div class="panel-hd"><div class="panel-title">Bikes</div></div>${bs.length?bs.map(b=>bikeCard(b,false)).join(''):`<div class="vsub">No bikes listed.</div>`}
+    ${canManage?`<div class="panel-hd" style="margin-top:16px"><div class="panel-title">Rank</div></div><div class="seg" id="mbRank"><button class="${rank==='hangaround'?'active':''}" onclick="setRank('${userId}','hangaround')">Hangaround</button><button class="${rank==='prospect'?'active':''}" onclick="setRank('${userId}','prospect')">Prospect</button><button class="${rank==='member'?'active':''}" onclick="setRank('${userId}','member')">Member</button></div><div class="vsub" style="margin:6px 0 14px">Rank decides which posts and events they can see. Managers always see everything.</div><div class="panel-hd"><div class="panel-title">Role</div></div><div class="seg" id="mbRole"><button class="${role==='manager'?'active':''}" data-v="manager" onclick="setRole('${userId}','manager')">Manager</button><button class="${role==='personnel'?'active':''}" data-v="personnel" onclick="setRole('${userId}','personnel')">Personnel</button></div><div class="vsub" style="margin:6px 0 14px">Managers can pin posts, customize the board, and clear anyone's events, receipts, or lift slots. Money still needs member rank.</div><div class="actions"><button class="btn danger" onclick="removeMember('${userId}')">Remove from garage</button></div>`:''}`;
+  openMov('movMember');
+}
+async function setRank(userId, rank){
+  try{ if(LOCAL) throw new Error('Local mode');
+    const { error } = await sb.from('garage_members').update({ rank }).eq('garage_id',S.garage.id).eq('user_id',userId); if(error) throw error;
+    const m=S.members.find(x=>x.user_id===userId); if(m) m.rank=rank; openMember(userId); openMembers(true); toast(`Now a ${rank}`);
+  }catch(e){ toast(e.message||'Could not change rank'); }
+}
+async function setRole(userId, role){
+  try{ if(LOCAL) throw new Error('Local mode');
+    const { error } = await sb.from('garage_members').update({ role }).eq('garage_id',S.garage.id).eq('user_id',userId); if(error) throw error;
+    const m=S.members.find(x=>x.user_id===userId); if(m) m.role=role; openMember(userId); openMembers(true); toast(`Now a ${role}`);
+  }catch(e){ toast(e.message||'Could not change role'); }
+}
+async function removeMember(userId){
+  const m=S.members.find(x=>x.user_id===userId); if(!confirm(`Remove ${m?.name||'this member'} from the garage?`)) return;
+  try{ if(LOCAL) throw new Error('Local mode');
+    const { error } = await sb.from('garage_members').delete().eq('garage_id',S.garage.id).eq('user_id',userId); if(error) throw error;
+    S.members=S.members.filter(x=>x.user_id!==userId); closeMov('movMember'); openMembers(true); toast('Removed');
+  }catch(e){ toast(e.message||'Could not remove'); }
+}
+
 /* ═══ CREW / INVITE ═══ */
 function openInvite(){ closeUserMenu(); $('invGarage').textContent=S.garage.name; $('invCode').textContent=LOCAL?'local mode':S.garage.invite_code; openMov('movInvite'); }
 function copyInvite(){ navigator.clipboard?.writeText(S.garage.invite_code||'').then(()=>toast('Copied')); }
-function openMembers(){ closeUserMenu(); const ms=[...S.members].sort((a,b)=>(a.role==='owner'?-1:1)); $('membersList').innerHTML=ms.map(m=>`<div class="row">${av(m.user_id,'')}<div class="grow"><div class="t">${esc(m.name)}${m.road_name?` <span class="road">“${esc(m.road_name)}”</span>`:''}</div><div class="s">${m.role}${m.bikes?' · '+esc(m.bikes):''}</div></div></div>`).join('')||`<div class="empty">Just you so far.</div>`; openMov('movMembers'); }
+function openMembers(keep){ closeUserMenu(); const rank={owner:0,manager:1,personnel:2}; const ms=[...S.members].sort((a,b)=>(rank[roleOf(a.user_id)]??9)-(rank[roleOf(b.user_id)]??9)||a.name.localeCompare(b.name));
+  $('membersList').innerHTML=ms.map(m=>{ const role=roleOf(m.user_id); const bs=bikesOf(m.user_id); return `<div class="row" style="cursor:pointer" onclick="openMember('${m.user_id}')">${av(m.user_id,'')}<div class="grow"><div class="t">${esc(m.name)}${m.road_name?` <span class="road">“${esc(m.road_name)}”</span>`:''}</div><div class="s">${bs.length?bs.map(b=>esc(b.name||bikeTitle(b))).join(', '):'no bikes listed'}</div></div><span class="role-pill ${rankOf(m.user_id)}">${rankOf(m.user_id)}</span>${role!=='personnel'?`<span class="role-pill ${role}">${role}</span>`:''}</div>`; }).join('')||`<div class="empty">Just you so far.</div>`;
+  if(!keep) openMov('movMembers'); }
 
 /* ═══ PWA ═══ */
 if('serviceWorker' in navigator){ window.addEventListener('load', ()=>navigator.serviceWorker.register('sw.js').catch(()=>{})); }
