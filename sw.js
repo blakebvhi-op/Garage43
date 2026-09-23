@@ -1,6 +1,6 @@
 // Garage 43 — service worker: offline shell cache + web push.
-const CACHE = 'g43-v1';
-const SHELL = ['./', './app.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
+const CACHE = 'g43-v2';
+const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -18,7 +18,7 @@ self.addEventListener('fetch', e => {
   e.respondWith(caches.match(e.request).then(hit => hit || fetch(e.request).then(res => {
     if (res.ok) caches.open(CACHE).then(c => c.put(e.request, res.clone()));
     return res;
-  }).catch(() => (e.request.mode === 'navigate' ? caches.match('./app.html') : undefined))));
+  }).catch(() => (e.request.mode === 'navigate' ? caches.match('./index.html') : undefined))));
 });
 
 self.addEventListener('push', e => {
