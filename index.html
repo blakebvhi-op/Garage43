@@ -256,6 +256,13 @@ header .wordmark{font-size:24px;}
 .review-box{border:1px solid var(--line);border-radius:10px;padding:12px;margin-top:14px;background:var(--bg);}
 .review-box.done{border-color:var(--ok);}
 .sig{font-family:var(--disp);font-size:20px;color:var(--ok);}
+.sigpad{position:relative;border:1px dashed var(--line);border-radius:10px;background:#fff;height:150px;overflow:hidden;touch-action:none;}
+.sigpad canvas{width:100%;height:100%;display:block;touch-action:none;cursor:crosshair;}
+.sigpad .hint{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#999;font-family:var(--disp);font-size:18px;pointer-events:none;}
+.sigpad.has .hint{display:none;}
+.sigpad .clr{position:absolute;top:6px;right:6px;background:rgba(0,0,0,.08);color:#333;border:none;border-radius:6px;padding:4px 9px;font-size:12px;}
+.sigline{background:#fff;border-radius:8px;padding:6px;margin-top:6px;}
+.sigline img{width:100%;max-height:110px;object-fit:contain;display:block;}
 
 /* ── FORUM ── */
 .post{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:13px 14px;margin-bottom:10px;cursor:pointer;}
@@ -651,6 +658,7 @@ header .wordmark{font-size:24px;}
     <div class="field"><label>After photos</label><div class="photos" id="soAfter"></div><input type="file" id="soAfterIn" accept="image/*" multiple style="display:none" onchange="addSoPhotos('after',this)"></div>
     <div class="field"><label>Closing checklist — all required</label><div id="soChecklist"></div></div>
     <div class="field"><label>Notes</label><textarea class="inp" id="soNotes" placeholder="Anything the next person should know?" style="min-height:64px"></textarea></div>
+    <div class="field"><label>Your signature — sign with your finger</label><div class="sigpad" id="soSig"></div></div>
     <div class="err" id="soErr"></div>
     <div class="actions"><button class="btn" id="soSubmit" onclick="submitSignoff()">Submit sign-off</button></div>
   </div>
@@ -1106,13 +1114,29 @@ async function releaseLift(id){
   try{ await db.remove(TABLES.lifts,id); S.lifts=S.lifts.filter(l=>l.id!==id); renderCurrent(); toast('Slot released'); }catch(e){ toast('Could not release'); }
 }
 
+/* ═══ SIGNATURE PAD ═══ */
+const SigPads={};
+function sigPad(id){
+  const host=$(id); host.innerHTML='<canvas></canvas><div class="hint">Sign here</div><button class="clr" type="button">Clear</button>'; host.classList.remove('has');
+  const c=host.querySelector('canvas'); const x=c.getContext('2d'); const dpr=window.devicePixelRatio||1;
+  const size=()=>{ const r=host.getBoundingClientRect(); c.width=r.width*dpr; c.height=r.height*dpr; x.scale(dpr,dpr); x.lineWidth=2.4; x.lineCap='round'; x.lineJoin='round'; x.strokeStyle='#111'; };
+  size(); let drawing=false, has=false;
+  const pt=e=>{ const r=c.getBoundingClientRect(); return [e.clientX-r.left, e.clientY-r.top]; };
+  c.addEventListener('pointerdown',e=>{ drawing=true; c.setPointerCapture(e.pointerId); const [px,py]=pt(e); x.beginPath(); x.moveTo(px,py); x.lineTo(px+0.1,py+0.1); x.stroke(); has=true; host.classList.add('has'); });
+  c.addEventListener('pointermove',e=>{ if(!drawing) return; const [px,py]=pt(e); x.lineTo(px,py); x.stroke(); });
+  const stop=()=>{ drawing=false; }; c.addEventListener('pointerup',stop); c.addEventListener('pointercancel',stop); c.addEventListener('pointerleave',stop);
+  host.querySelector('.clr').onclick=()=>{ x.clearRect(0,0,c.width,c.height); has=false; host.classList.remove('has'); };
+  const pad={ isEmpty:()=>!has, dataUrl:()=>{ const t=document.createElement('canvas'); t.width=c.width; t.height=c.height; t.getContext('2d').drawImage(c,0,0); return t.toDataURL('image/png'); } };
+  SigPads[id]=pad; return pad;
+}
+
 /* ═══ LIFT SIGN-OFF ═══ */
 let soBooking=null, soPhotos={before:[],after:[]};
 function openSignoff(bookingId){
   const b=S.lifts.find(x=>x.id===bookingId); if(!b) return; soBooking=b; soPhotos={before:[],after:[]};
   $('soBooking').textContent=`${fmtLong(b.booking_date)} · ${fmtTime(b.start_time)}–${fmtTime(b.end_time)}${liftCount()>1?' · Lift '+(b.lift_number||1):''}${b.note?' · '+b.note:''}`;
   $('soChecklist').innerHTML=checklist().map((c,i)=>`<div class="cl"><input type="checkbox" id="cl_${i}" onchange="this.parentElement.classList.toggle('done',this.checked)"><label for="cl_${i}">${esc(c)}</label></div>`).join('');
-  $('soNotes').value=''; $('soErr').textContent=''; $('soSubmit').disabled=false; drawSoPhotos(); openMov('movSignoff');
+  $('soNotes').value=''; $('soErr').textContent=''; $('soSubmit').disabled=false; drawSoPhotos(); openMov('movSignoff'); setTimeout(()=>sigPad('soSig'),60);
 }
 function drawSoPhotos(){ for(const k of ['before','after']){ $('so'+k[0].toUpperCase()+k.slice(1)).innerHTML=soPhotos[k].map((u,i)=>`<div class="ph"><img src="${u}" alt=""><button class="x" onclick="soPhotos['${k}'].splice(${i},1);drawSoPhotos()">×</button></div>`).join('')+(soPhotos[k].length<6?`<button class="add" onclick="document.getElementById('so${k[0].toUpperCase()+k.slice(1)}In').click()">+ ${k}</button>`:''); } }
 async function addSoPhotos(kind, input){
@@ -1125,7 +1149,8 @@ async function submitSignoff(){
   const items=checklist(); const done=items.map((c,i)=>$('cl_'+i).checked);
   if(done.some(x=>!x)){ $('soErr').textContent='Every checklist item has to be done before you close up.'; return; }
   if(!soPhotos.after.length){ $('soErr').textContent='Add at least one after photo.'; return; }
-  const row={ id:uid(), garage_id:S.garage.id, booking_id:soBooking.id, lift_number:soBooking.lift_number||1, user_id:me(), checklist:items.map((c,i)=>({ item:c, done:done[i] })), before_photos:soPhotos.before, after_photos:soPhotos.after, notes:$('soNotes').value.trim()||null, reviewed_by:null, reviewed_at:null, review_note:null, created_at:new Date().toISOString() };
+  const pad=SigPads['soSig']; if(!pad||pad.isEmpty()){ $('soErr').textContent='Sign the form with your finger.'; return; }
+  const row={ id:uid(), garage_id:S.garage.id, booking_id:soBooking.id, lift_number:soBooking.lift_number||1, user_id:me(), checklist:items.map((c,i)=>({ item:c, done:done[i] })), before_photos:soPhotos.before, after_photos:soPhotos.after, notes:$('soNotes').value.trim()||null, user_signature:pad.dataUrl(), reviewed_by:null, manager_signature:null, reviewed_at:null, review_note:null, created_at:new Date().toISOString() };
   $('soSubmit').disabled=true;
   try{ await db.upsert(TABLES.signoffs,row); S.signoffs.push(row); closeMov('movSignoff'); renderCurrent(); toast('Signed off — thanks'); }
   catch(e){ $('soErr').textContent=e.message||'Could not submit.'; $('soSubmit').disabled=false; }
@@ -1141,15 +1166,17 @@ function openSignoffView(id){
     <div class="field"><label>After</label>${gal(x.after_photos)}</div>
     <div class="field"><label>Checklist</label>${(x.checklist||[]).map(c=>`<div class="cl ${c.done?'done':''}"><input type="checkbox" disabled ${c.done?'checked':''}><label>${esc(c.item)}</label></div>`).join('')}</div>
     ${x.notes?`<div class="field"><label>Notes</label><div class="post-body">${esc(x.notes)}</div></div>`:''}
+    ${x.user_signature?`<div class="field"><label>Signed by ${esc(nameOf(x.user_id))}</label><div class="sigline"><img src="${x.user_signature}" alt="signature"></div></div>`:''}
     <div class="review-box ${x.reviewed_at?'done':''}"><div class="panel-title" style="font-size:17px;margin-bottom:6px">Manager review</div>
-      ${x.reviewed_at?`<div class="sig">✓ ${esc(nameOf(x.reviewed_by))}</div><div class="vsub">${fmtWhen(x.reviewed_at)}${x.review_note?' · '+esc(x.review_note):''}</div>`
-      : canReview?`<div class="cl"><input type="checkbox" id="rvOk"><label for="rvOk">I've looked at the photos and the bay is closed properly.</label></div><input class="inp" id="rvNote" placeholder="Note (optional)" style="margin:8px 0"><div class="err" id="rvErr"></div><button class="btn" style="width:100%" onclick="reviewSignoff('${x.id}')">Sign as reviewed</button>`
+      ${x.reviewed_at?`<div class="sig">✓ ${esc(nameOf(x.reviewed_by))}</div><div class="vsub">${fmtWhen(x.reviewed_at)}${x.review_note?' · '+esc(x.review_note):''}</div>${x.manager_signature?`<div class="sigline"><img src="${x.manager_signature}" alt="manager signature"></div>`:''}`
+      : canReview?`<div class="cl"><input type="checkbox" id="rvOk"><label for="rvOk">I've looked at the photos and the bay is closed properly.</label></div><input class="inp" id="rvNote" placeholder="Note (optional)" style="margin:8px 0"><label class="vsub" style="display:block;margin-bottom:4px">Manager signature</label><div class="sigpad" id="rvSig"></div><div class="err" id="rvErr"></div><button class="btn" style="width:100%" onclick="reviewSignoff('${x.id}')">Sign as reviewed</button>`
       : `<div class="vsub">Waiting on a manager.</div>`}</div>`;
-  openMov('movSignoffView');
+  openMov('movSignoffView'); if(canReview) setTimeout(()=>sigPad('rvSig'),60);
 }
 async function reviewSignoff(id){
   if(!$('rvOk').checked){ $('rvErr').textContent='Tick the box to sign.'; return; }
-  const x=S.signoffs.find(s=>s.id===id); const patch={ reviewed_by:me(), reviewed_at:new Date().toISOString(), review_note:$('rvNote').value.trim()||null };
+  const pad=SigPads['rvSig']; if(!pad||pad.isEmpty()){ $('rvErr').textContent='Sign with your finger.'; return; }
+  const x=S.signoffs.find(s=>s.id===id); const patch={ reviewed_by:me(), reviewed_at:new Date().toISOString(), review_note:$('rvNote').value.trim()||null, manager_signature:pad.dataUrl() };
   try{ if(LOCAL) await db.upsert(TABLES.signoffs,{...x,...patch}); else { const { error } = await sb.from(TABLES.signoffs).update(patch).eq('id',id); if(error) throw error; }
     Object.assign(x,patch); openSignoffView(id); renderCurrent(); toast('Reviewed'); }
   catch(e){ $('rvErr').textContent=e.message||'Could not sign.'; }
