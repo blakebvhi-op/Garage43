@@ -1103,7 +1103,12 @@ function hourNum(t){ return +t.split(':')[0]; }
 function boardLayout(){
   const saved = S.garage.dashboard_layout;
   const ids = new Set(BOARD_WIDGETS.map(w=>w.id));
-  if(Array.isArray(saved) && saved.some(w=>ids.has(w.id))) return saved.filter(w=>ids.has(w.id));
+  if(Array.isArray(saved) && saved.some(w=>ids.has(w.id))){
+    const lay=saved.filter(w=>ids.has(w.id)); const have=new Set(lay.map(w=>w.id));
+    // widgets added after the layout was saved show up (enabled) until someone turns them off
+    BOARD_WIDGETS.forEach((w,i)=>{ if(!have.has(w.id)) lay.splice(Math.min(i,lay.length),0,{ id:w.id, enabled:true }); });
+    return lay;
+  }
   return BOARD_WIDGETS.map(w=>({ id:w.id, enabled:true }));
 }
 function renderBoard(){
