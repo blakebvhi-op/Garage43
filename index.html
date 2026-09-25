@@ -283,6 +283,39 @@ header .wordmark{font-size:24px;}
 .reply-box{display:flex;gap:8px;margin-top:12px;}
 .reply-box .inp{flex:1;}
 
+/* ── FUNDS ── */
+.total-card{background:var(--panel);border:1px solid var(--accent);border-radius:12px;padding:14px;margin-bottom:12px;display:flex;align-items:flex-end;justify-content:space-between;gap:10px;}
+.total-card .lbl{font-size:12px;color:var(--muted);margin-bottom:4px;}
+.buckets{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px;}
+@media(min-width:768px){.buckets{grid-template-columns:repeat(4,1fr);}}
+.bucket{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer;position:relative;overflow:hidden;}
+.bucket.active{border-color:var(--ink);}
+.bucket::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--bc,var(--accent));}
+.bucket .bn{font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.bucket .bv{font-family:var(--mono);font-size:19px;font-weight:600;margin-top:2px;}
+.bucket .bv.neg{color:var(--danger);}
+.bucket .bt{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:3px;}
+.bucket .bar{height:4px;background:var(--line);border-radius:2px;margin-top:6px;overflow:hidden;}
+.bucket .bar i{display:block;height:100%;background:var(--bc,var(--accent));}
+.bucket.add{border-style:dashed;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:13px;min-height:70px;}
+.bucket.add::before{display:none;}
+.bdot{width:8px;height:8px;border-radius:50%;background:var(--bc,var(--accent));flex-shrink:0;}
+.swatches{display:flex;gap:8px;flex-wrap:wrap;}
+.swatches button{width:30px;height:30px;border-radius:50%;border:2px solid transparent;}
+.swatches button.active{border-color:var(--ink);}
+.cf-chart{width:100%;height:140px;display:block;margin:6px 0 10px;}
+.cf-row{display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr;gap:6px;padding:8px 0;border-top:1px solid var(--line);font-family:var(--mono);font-size:12px;align-items:center;}
+.cf-row:first-child{border-top:none;color:var(--muted);font-size:11px;}
+.cf-row .m{font-family:var(--body);font-size:14px;font-weight:500;}
+.cf-row .pos{color:var(--ok);} .cf-row .negv{color:var(--danger);}
+.plan-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line);}
+.plan-row:first-child{border-top:none;}
+.plan-row .grow{flex:1;min-width:0;}
+.plan-row .t{font-weight:500;}
+.plan-row .s{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:2px;}
+.rphoto{width:34px;height:34px;border-radius:6px;object-fit:cover;border:1px solid var(--line);flex-shrink:0;}
+.mini{font-family:var(--mono);font-size:11px;color:var(--muted);}
+
 /* ── RECEIPTS ── */
 .ledger-hd{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;}
 .ledger-hd .cell{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;}
@@ -415,7 +448,7 @@ header .wordmark{font-size:24px;}
       <button class="dtab" id="dtCal" onclick="switchMain('cal')">Calendar</button>
       <button class="dtab" id="dtLift" onclick="switchMain('lift')">Lift</button>
       <button class="dtab" id="dtForum" onclick="switchMain('forum')">Forum</button>
-      <button class="dtab" id="dtLedger" onclick="switchMain('ledger')">Receipts</button>
+      <button class="dtab" id="dtLedger" onclick="switchMain('ledger')">Funds</button>
     </div>
     <button class="btn sm dadd" id="daddBtn" onclick="handleFab()">+ <span id="daddLbl">New event</span></button>
     <div class="sync" id="syncWrap" onclick="manualResync()" title="Tap to resync"><div class="sync-dot" id="syncDot"></div><span id="syncLbl">Local</span></div>
@@ -440,7 +473,7 @@ header .wordmark{font-size:24px;}
   <button class="bnbtn" id="bnCal" onclick="switchMain('cal')"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><div class="bnlbl">Calendar</div><div class="bnbadge" id="bnCalBadge"></div></button>
   <button class="bnbtn" id="bnLift" onclick="switchMain('lift')"><svg viewBox="0 0 24 24"><path d="M4 20h16M6 20V9h12v11M9 9V4h6v5M12 4v5"/></svg><div class="bnlbl">Lift</div></button>
   <button class="bnbtn" id="bnForum" onclick="switchMain('forum')"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-8 8H8l-5 3V12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8z"/></svg><div class="bnlbl">Forum</div><div class="bnbadge" id="bnForumBadge"></div></button>
-  <button class="bnbtn" id="bnLedger" onclick="switchMain('ledger')"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg><div class="bnlbl">Receipts</div></button>
+  <button class="bnbtn" id="bnLedger" onclick="switchMain('ledger')"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg><div class="bnlbl">Funds</div></button>
 </div>
 <button class="fab" id="fabBtn" onclick="handleFab()" aria-label="Add">+</button>
 
@@ -503,10 +536,14 @@ header .wordmark{font-size:24px;}
   </div>
 
   <div class="view" id="vLedger">
-    <div class="vhead"><div><div class="vtitle">Receipts &amp; Ledger</div><div class="vsub">What came out of the fund, and what went in.</div></div></div>
+    <div class="vhead">
+      <div><div class="vtitle">Funds</div><div class="vsub" id="fundSub"></div></div>
+      <div class="seg sm" id="fundSeg"><button class="active" data-f="ledger" onclick="setFundTab('ledger')">Ledger</button><button data-f="flow" onclick="setFundTab('flow')">Cash flow</button><button data-f="plan" onclick="setFundTab('plan')">Monthly plan</button></div>
+    </div>
     <div class="vscroll">
-      <div class="ledger-hd" id="ledgerHd"></div>
-      <div class="panel" id="ledgerList"></div>
+      <div class="total-card"><div><div class="lbl">Total in the fund</div><div class="big-num" id="fundTotal"></div></div><div class="stack" style="gap:6px"><button class="btn sm ghost" onclick="openTransfer()">Move money</button><button class="btn sm ghost" onclick="exportCsv()">Export CSV</button></div></div>
+      <div class="buckets" id="bucketGrid"></div>
+      <div id="fundBody"></div>
     </div>
   </div>
 
@@ -573,6 +610,8 @@ header .wordmark{font-size:24px;}
       <div class="field"><label>Date</label><input class="inp mono" id="rcDate" type="date"></div>
     </div>
     <div class="field"><label>For what</label><input class="inp" id="rcMemo" placeholder="Brake cleaner, pizza, shop towels…"></div>
+    <div class="field"><label>Bucket</label><select class="inp" id="rcBucket"></select></div>
+    <div class="field"><label>Receipt photo <span style="opacity:.6">(optional)</span></label><div class="photos" id="rcPhotoWrap"></div><input type="file" id="rcPhotoIn" accept="image/*" style="display:none" onchange="pickRcPhoto(this)"></div>
     <div class="err" id="rcErr"></div>
     <div class="actions"><button class="btn" onclick="saveReceipt()">Log it</button></div>
   </div>
@@ -678,6 +717,53 @@ header .wordmark{font-size:24px;}
   </div>
 </div>
 
+<div class="mov" id="movBucket" onclick="if(event.target===this)closeMov('movBucket')">
+  <div class="modal">
+    <div class="modal-hd"><div class="modal-title" id="bkHd2">New bucket</div><button class="modal-x" onclick="closeMov('movBucket')">×</button></div>
+    <div class="field"><label>Name</label><input class="inp" id="buName" maxlength="28" placeholder="Party fund, Shop supplies, Rent…"></div>
+    <div class="field"><label>Color</label><div class="swatches" id="buColors"></div></div>
+    <div class="field"><label>Target <span style="opacity:.6">(optional — shows a progress bar)</span></label><input class="inp mono" id="buTarget" type="number" inputmode="decimal" step="1" min="0" placeholder="500"></div>
+    <div class="err" id="buErr"></div>
+    <div class="actions"><button class="btn danger hidden" id="buDel" onclick="deleteBucket()">Delete</button><button class="btn" onclick="saveBucket()">Save bucket</button></div>
+  </div>
+</div>
+
+<div class="mov" id="movTransfer" onclick="if(event.target===this)closeMov('movTransfer')">
+  <div class="modal">
+    <div class="modal-hd"><div class="modal-title">Move money</div><button class="modal-x" onclick="closeMov('movTransfer')">×</button></div>
+    <div class="field-row">
+      <div class="field"><label>From</label><select class="inp" id="trFrom"></select></div>
+      <div class="field"><label>To</label><select class="inp" id="trTo"></select></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Amount</label><input class="inp mono" id="trAmt" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
+      <div class="field"><label>Date</label><input class="inp mono" id="trDate" type="date"></div>
+    </div>
+    <div class="field"><label>Why</label><input class="inp" id="trMemo" placeholder="Topping up the party fund"></div>
+    <div class="err" id="trErr"></div>
+    <div class="actions"><button class="btn" onclick="saveTransfer()">Move it</button></div>
+  </div>
+</div>
+
+<div class="mov" id="movPlan" onclick="if(event.target===this)closeMov('movPlan')">
+  <div class="modal">
+    <div class="modal-hd"><div class="modal-title" id="plHd">Monthly item</div><button class="modal-x" onclick="closeMov('movPlan')">×</button></div>
+    <div class="field"><div class="seg" id="plKind"><button class="active" data-v="out" onclick="segPick('plKind',this)">Expense</button><button data-v="in" onclick="segPick('plKind',this)">Expected income</button></div></div>
+    <div class="field"><label>Name</label><input class="inp" id="plName" placeholder="Rent, electric, dues…"></div>
+    <div class="field-row">
+      <div class="field"><label>Amount</label><input class="inp mono" id="plAmt" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
+      <div class="field"><label>Day of month</label><input class="inp mono" id="plDay" type="number" inputmode="numeric" min="1" max="31" placeholder="1"></div>
+    </div>
+    <div class="field"><label>Bucket</label><select class="inp" id="plBucket"></select></div>
+    <div class="err" id="plErr"></div>
+    <div class="actions"><button class="btn danger hidden" id="plDel" onclick="deletePlan()">Delete</button><button class="btn" onclick="savePlan()">Save</button></div>
+  </div>
+</div>
+
+<div class="mov" id="movReceiptView" onclick="if(event.target===this)closeMov('movReceiptView')">
+  <div class="modal" id="receiptViewModal"></div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
@@ -715,7 +801,7 @@ function segVal(segId){ return $(segId).querySelector('button.active')?.dataset.
 function setSync(state, lbl){ const d=$('syncDot'); d.className='sync-dot '+state; if(lbl) $('syncLbl').textContent=lbl; }
 
 /* ═══ STATE ═══ */
-const S = { user:null, profile:null, garage:null, members:[], events:[], rsvps:[], lifts:[], posts:[], replies:[], polls:[], votes:[], receipts:[], bikes:[], signoffs:[] };
+const S = { user:null, profile:null, garage:null, members:[], events:[], rsvps:[], lifts:[], posts:[], replies:[], polls:[], votes:[], receipts:[], bikes:[], signoffs:[], buckets:[], plan:[] };
 let mainView='board', calFilter='all', forumFilter='all', calCursor=new Date(), calSel=todayYmd(), liftDay=todayYmd(), editEventId=null, openThreadId=null;
 const BOARD_WIDGETS = [
   {id:'fund', label:'Fund balance'},
@@ -733,8 +819,8 @@ const THEMES = [
 
 /* ═══ DATA LAYER — same API over Supabase or localStorage ═══ */
 const LS = { get:(k,d)=>{ try{ const v=localStorage.getItem('g43_'+k); return v?JSON.parse(v):d; }catch(e){ return d; } }, set:(k,v)=>{ try{ localStorage.setItem('g43_'+k, JSON.stringify(v)); }catch(e){} } };
-const TABLES = { events:'garage_events', rsvps:'event_rsvps', lifts:'lift_bookings', posts:'garage_posts', replies:'garage_replies', polls:'garage_polls', votes:'poll_votes', receipts:'garage_receipts', bikes:'bikes', signoffs:'lift_signoffs' };
-const GARAGE_SCOPED = new Set(['garage_events','lift_bookings','garage_posts','garage_polls','garage_receipts','bikes','lift_signoffs']);
+const TABLES = { events:'garage_events', rsvps:'event_rsvps', lifts:'lift_bookings', posts:'garage_posts', replies:'garage_replies', polls:'garage_polls', votes:'poll_votes', receipts:'garage_receipts', bikes:'bikes', signoffs:'lift_signoffs', buckets:'fund_buckets', plan:'fund_recurring' };
+const GARAGE_SCOPED = new Set(['garage_events','lift_bookings','garage_posts','garage_polls','garage_receipts','bikes','lift_signoffs','fund_buckets','fund_recurring']);
 
 const db = {
   async list(table){
@@ -761,11 +847,11 @@ const db = {
 async function loadAll(){
   setSync('syncing', LOCAL ? 'Local' : 'Syncing');
   try{
-    const [events, rsvps, lifts, posts, replies, polls, votes, receipts, bikes, signoffs] = await Promise.all(
-      ['events','rsvps','lifts','posts','replies','polls','votes','receipts','bikes','signoffs'].map(k => db.list(TABLES[k]).catch(e => { console.warn(k, e); return null; }))
+    const [events, rsvps, lifts, posts, replies, polls, votes, receipts, bikes, signoffs, buckets, plan] = await Promise.all(
+      ['events','rsvps','lifts','posts','replies','polls','votes','receipts','bikes','signoffs','buckets','plan'].map(k => db.list(TABLES[k]).catch(e => { console.warn(k, e); return null; }))
     );
     if(events) S.events=events; if(rsvps) S.rsvps=rsvps; if(lifts) S.lifts=lifts; if(posts) S.posts=posts;
-    if(replies) S.replies=replies; if(polls) S.polls=polls; if(votes) S.votes=votes; if(receipts) S.receipts=receipts; if(bikes) S.bikes=bikes; if(signoffs) S.signoffs=signoffs;
+    if(replies) S.replies=replies; if(polls) S.polls=polls; if(votes) S.votes=votes; if(receipts) S.receipts=receipts; if(bikes) S.bikes=bikes; if(signoffs) S.signoffs=signoffs; if(buckets) S.buckets=buckets; if(plan) S.plan=plan;
     if(!LOCAL){
       const { data:mems, error:me1 } = await sb.from('garage_members').select('user_id, role, rank').eq('garage_id', S.garage.id);
       if(me1) console.warn('members', me1);
@@ -914,11 +1000,11 @@ function switchMain(v){
   document.querySelectorAll('.view').forEach(x=>x.classList.remove('active')); $(map[v]).classList.add('active');
   const key=v.charAt(0).toUpperCase()+v.slice(1);
   ['Board','Cal','Lift','Forum','Ledger'].forEach(k=>{ $('bn'+k).classList.toggle('active',k===key); $('dt'+k).classList.toggle('active',k===key); });
-  $('daddLbl').textContent={ board:'New event', cal:'New event', lift:'Claim slot', forum:'New post', ledger:'Log receipt' }[v];
+  $('daddLbl').textContent={ board:'New event', cal:'New event', lift:'Claim slot', forum:'New post', ledger:(fundTab==='plan'?'Add monthly item':'Log receipt') }[v];
   renderCurrent();
 }
 function renderCurrent(){ ({ board:renderBoard, cal:renderCal, lift:renderLift, forum:renderForum, ledger:renderLedger })[mainView](); }
-function handleFab(){ ({ board:openEvent, cal:openEvent, lift:()=>openLift(), forum:openPost, ledger:openReceipt })[mainView](); }
+function handleFab(){ ({ board:openEvent, cal:openEvent, lift:()=>openLift(), forum:openPost, ledger:()=>fundTab==='plan'?openPlan():openReceipt() })[mainView](); }
 function toggleUserMenu(){ $('userMenu').classList.toggle('open'); }
 function closeUserMenu(){ $('userMenu').classList.remove('open'); }
 document.addEventListener('click', e=>{ if(!e.target.closest('#userMenu') && !e.target.closest('#userBadge')) closeUserMenu(); });
@@ -1244,22 +1330,114 @@ async function sendReply(){
 async function togglePin(id){ const p=S.posts.find(x=>x.id===id); try{ await db.upsert(TABLES.posts,{ ...p, pinned:!p.pinned }); p.pinned=!p.pinned; renderThread(); renderForum(); }catch(e){ toast('Only the owner or a manager can pin'); } }
 async function deletePost(id){ if(!confirm('Delete this post?')) return; try{ await db.remove(TABLES.posts,id); S.posts=S.posts.filter(p=>p.id!==id); closeMov('movThread'); renderForum(); toast('Post deleted'); }catch(e){ toast('Could not delete'); } }
 
-/* ═══ LEDGER ═══ */
+/* ═══ FUNDS ═══ */
+let fundTab='ledger', fundBucket='all', rcPhoto='';
+const BUCKET_COLORS=['#ff7a1a','#5cc46a','#f2c14e','#4fa3ff','#c77dff','#ff5c8a','#2ad4c8','#a0a0a0'];
+function bucketName(id){ return id ? (S.buckets.find(b=>b.id===id)?.name||'Deleted bucket') : 'Unassigned'; }
+function bucketColor(id){ return S.buckets.find(b=>b.id===id)?.color || '#7a828a'; }
+function signed(r){ return r.kind==='in' ? +r.amount : -r.amount; }
+function bucketBalance(id){ return S.receipts.filter(r=>(r.bucket_id||null)===(id||null)).reduce((s,r)=>s+signed(r),0); }
+function sortedBuckets(){ return [...S.buckets].sort((a,b)=>(a.sort??0)-(b.sort??0)||a.name.localeCompare(b.name)); }
+function setFundTab(t){ fundTab=t; document.querySelectorAll('#fundSeg button').forEach(b=>b.classList.toggle('active',b.dataset.f===t)); switchMain('ledger'); }
+function monthKey(d){ return d.slice(0,7); }
+function monthLabel(k){ const [y,m]=k.split('-').map(Number); return new Date(y,m-1,1).toLocaleDateString('en-US',{month:'short',year:'2-digit'}); }
+
 function renderLedger(){
-  const rows=[...S.receipts].sort((a,b)=>(a.receipt_date+a.created_at).localeCompare(b.receipt_date+b.created_at));
-  let run=0; const withBal=rows.map(r=>{ run+= r.kind==='in'?+r.amount:-r.amount; return { ...r, run }; }).reverse();
-  const inn=rows.filter(r=>r.kind==='in').reduce((s,r)=>s+ +r.amount,0), out=rows.filter(r=>r.kind==='out').reduce((s,r)=>s+ +r.amount,0);
-  $('ledgerHd').innerHTML=`<div class="cell bal"><div class="lbl">Fund balance</div><div class="val ${run<0?'neg':''}" style="${run<0?'color:var(--danger)':''}">${money(run)}</div></div><div class="cell"><div class="lbl">Paid in</div><div class="val" style="color:var(--ok)">${money(inn)}</div></div><div class="cell"><div class="lbl">Spent</div><div class="val">${money(out)}</div></div><div class="cell"><div class="lbl">Entries</div><div class="val">${rows.length}</div></div>`;
-  $('ledgerList').innerHTML = withBal.length ? withBal.map(r=>`<div class="ledger-row"><div class="grow"><div class="t">${esc(r.memo)}</div><div class="s mono" style="font-size:12px;color:var(--muted)">${fmtDate(r.receipt_date)} · ${esc(nameOf(r.user_id))}${(r.user_id===me()||isAdmin())?` · <button class="panel-link" style="color:var(--danger);font-size:12px" onclick="deleteReceipt('${r.id}')">remove</button>`:''}</div></div><div class="amt ${r.kind}">${r.kind==='in'?'+':'−'}${money(r.amount)}</div><div class="bal">${money(r.run)}</div></div>`).join('') : `<div class="empty"><b>Empty ledger</b>Log the first receipt.</div>`;
+  const total=balance(); $('fundTotal').textContent=money(total); $('fundTotal').classList.toggle('neg',total<0);
+  $('fundSub').textContent=`${S.receipts.length} entries · ${S.buckets.length} bucket${S.buckets.length===1?'':'s'}`;
+  const unassigned=bucketBalance(null); const bs=sortedBuckets();
+  $('bucketGrid').innerHTML = bs.map(b=>{ const bal=bucketBalance(b.id); const pct=b.target>0?Math.max(0,Math.min(100,bal/b.target*100)):null;
+    return `<div class="bucket ${fundBucket===b.id?'active':''}" style="--bc:${b.color}" onclick="fundBucket=fundBucket==='${b.id}'?'all':'${b.id}';setFundTab('ledger')"><div class="bn">${esc(b.name)}</div><div class="bv ${bal<0?'neg':''}">${money(bal)}</div>${pct!=null?`<div class="bt">${Math.round(pct)}% of ${money(b.target)}</div><div class="bar"><i style="width:${pct}%"></i></div>`:''}${isAdmin()?`<button class="panel-link" style="position:absolute;top:8px;right:10px;font-size:12px" onclick="event.stopPropagation();openBucket('${b.id}')">edit</button>`:''}</div>`; }).join('')
+    + (Math.abs(unassigned)>0.004||!bs.length?`<div class="bucket ${fundBucket==='none'?'active':''}" style="--bc:#7a828a" onclick="fundBucket=fundBucket==='none'?'all':'none';setFundTab('ledger')"><div class="bn">Unassigned</div><div class="bv ${unassigned<0?'neg':''}">${money(unassigned)}</div></div>`:'')
+    + (isAdmin()?`<button class="bucket add" onclick="openBucket()">+ Bucket</button>`:'');
+  if(fundTab==='ledger') renderLedgerList(); else if(fundTab==='flow') renderFlow(); else renderPlan();
 }
-function openReceipt(){ $('rcAmt').value=''; $('rcMemo').value=''; $('rcDate').value=todayYmd(); $('rcErr').textContent=''; $('rcKind').querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.v==='out')); openMov('movReceipt'); setTimeout(()=>$('rcAmt').focus(),250); }
+function renderLedgerList(){
+  let rows=[...S.receipts].sort((a,b)=>(a.receipt_date+a.created_at).localeCompare(b.receipt_date+b.created_at));
+  if(fundBucket==='none') rows=rows.filter(r=>!r.bucket_id); else if(fundBucket!=='all') rows=rows.filter(r=>r.bucket_id===fundBucket);
+  let run=0; const withBal=rows.map(r=>{ run+=signed(r); return {...r,run}; }).reverse();
+  const title = fundBucket==='all'?'All entries':fundBucket==='none'?'Unassigned':bucketName(fundBucket);
+  $('fundBody').innerHTML=`<div class="panel"><div class="panel-hd"><div class="panel-title">${esc(title)}</div>${fundBucket!=='all'?`<button class="panel-link" onclick="fundBucket='all';renderLedger()">Show all</button>`:''}</div>
+    ${withBal.length?withBal.map(r=>`<div class="ledger-row" style="cursor:pointer" onclick="openReceiptView('${r.id}')"><div class="grow" style="display:flex;gap:8px;align-items:center">${r.photo_url?`<img class="rphoto" src="${r.photo_url}" alt="">`:''}<div><div class="t">${r.transfer_group?'⇄ ':''}${esc(r.memo)}</div><div class="s mini" style="display:flex;align-items:center;gap:5px"><span class="bdot" style="--bc:${bucketColor(r.bucket_id)}"></span>${esc(bucketName(r.bucket_id))} · ${fmtDate(r.receipt_date)} · ${esc(nameOf(r.user_id))}</div></div></div><div class="amt ${r.kind}">${r.kind==='in'?'+':'−'}${money(r.amount)}</div><div class="bal">${money(r.run)}</div></div>`).join(''):`<div class="empty"><b>Nothing here yet</b>Log the first receipt.</div>`}</div>`;
+}
+/* cash flow: last 6 months, transfers excluded */
+function monthStats(){
+  const now=new Date(); const keys=[]; for(let i=5;i>=0;i--){ const d=new Date(now.getFullYear(),now.getMonth()-i,1); keys.push(`${d.getFullYear()}-${pad(d.getMonth()+1)}`); }
+  return keys.map(k=>{ const rs=S.receipts.filter(r=>!r.transfer_group && monthKey(r.receipt_date)===k); const inn=rs.filter(r=>r.kind==='in').reduce((s,r)=>s+ +r.amount,0), out=rs.filter(r=>r.kind==='out').reduce((s,r)=>s+ +r.amount,0); return { k, inn, out, net:inn-out }; });
+}
+function renderFlow(){
+  const ms=monthStats(); const max=Math.max(1,...ms.flatMap(m=>[m.inn,m.out]));
+  const W=340,H=130,pad_=24,bw=(W-pad_)/ms.length; const chart=`<svg class="cf-chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${ms.map((m,i)=>{ const x=pad_+i*bw; const hi=(m.inn/max)*(H-30), ho=(m.out/max)*(H-30); return `<rect x="${x+4}" y="${H-20-hi}" width="${bw/2-6}" height="${hi}" fill="var(--ok)" rx="2"/><rect x="${x+bw/2+2}" y="${H-20-ho}" width="${bw/2-6}" height="${ho}" fill="var(--danger)" rx="2"/><text x="${x+bw/2}" y="${H-6}" text-anchor="middle" font-size="10" fill="var(--muted)" font-family="IBM Plex Mono,monospace">${monthLabel(m.k)}</text>`; }).join('')}</svg>`;
+  const cur=ms[ms.length-1]; const expIn=S.plan.filter(p=>p.active!==false&&p.kind==='in').reduce((s,p)=>s+ +p.amount,0), expOut=S.plan.filter(p=>p.active!==false&&p.kind==='out').reduce((s,p)=>s+ +p.amount,0);
+  $('fundBody').innerHTML=`<div class="panel"><div class="panel-hd"><div class="panel-title">Last 6 months</div><span class="mini"><span style="color:var(--ok)">■</span> in &nbsp;<span style="color:var(--danger)">■</span> out</span></div>${chart}
+    <div class="cf-row"><div>Month</div><div>In</div><div>Out</div><div>Net</div></div>
+    ${[...ms].reverse().map(m=>`<div class="cf-row"><div class="m">${monthLabel(m.k)}</div><div class="pos">${money(m.inn)}</div><div>${money(m.out)}</div><div class="${m.net<0?'negv':'pos'}">${money(m.net)}</div></div>`).join('')}</div>
+    <div class="panel"><div class="panel-hd"><div class="panel-title">This month vs plan</div><button class="panel-link" onclick="setFundTab('plan')">Edit plan</button></div>
+    <div class="kv"><span>Expected income</span><span class="v">${money(expIn)}</span></div><div class="kv"><span>Actual income so far</span><span class="v" style="color:var(--ok)">${money(cur.inn)}</span></div>
+    <div class="kv"><span>Planned expenses</span><span class="v">${money(expOut)}</span></div><div class="kv"><span>Spent so far</span><span class="v">${money(cur.out)}</span></div>
+    <div class="kv"><span>Projected end of month</span><span class="v" style="font-weight:600">${money(balance()+Math.max(0,expIn-cur.inn)-Math.max(0,expOut-cur.out))}</span></div>
+    <div class="mini" style="margin-top:8px">Projection = current total + unreceived expected income − unpaid planned expenses.</div></div>`;
+}
+function renderPlan(){
+  const cur=monthKey(todayYmd()); const items=[...S.plan].sort((a,b)=>(a.kind===b.kind?(a.day_of_month||0)-(b.day_of_month||0):a.kind==='out'?-1:1));
+  const logged=p=>S.receipts.some(r=>r.plan_id===p.id && monthKey(r.receipt_date)===cur);
+  const sec=(kind,title)=>{ const rows=items.filter(p=>p.kind===kind); return `<div class="panel"><div class="panel-hd"><div class="panel-title">${title}</div><span class="mini">${money(rows.reduce((s,p)=>s+ +p.amount,0))}/mo</span></div>${rows.length?rows.map(p=>`<div class="plan-row"><span class="bdot" style="--bc:${bucketColor(p.bucket_id)}"></span><div class="grow" ${isAdmin()?`style="cursor:pointer" onclick="openPlan('${p.id}')"`:''}><div class="t">${esc(p.name)}</div><div class="s">${money(p.amount)} · ${p.day_of_month?'day '+p.day_of_month:'any day'} · ${esc(bucketName(p.bucket_id))}</div></div>${logged(p)?`<span class="status reviewed">done</span>`:`<button class="btn sm ghost" onclick="logPlan('${p.id}')">Log it</button>`}</div>`).join(''):`<div class="empty">Nothing planned.</div>`}</div>`; };
+  $('fundBody').innerHTML=sec('out','Monthly expenses')+sec('in','Expected income');
+}
+/* buckets */
+let editBucketId=null, buColor=BUCKET_COLORS[0];
+function openBucket(id){ editBucketId=id||null; const b=id?S.buckets.find(x=>x.id===id):null; $('bkHd2').textContent=b?'Edit bucket':'New bucket'; $('buName').value=b?.name||''; $('buTarget').value=b?.target||''; buColor=b?.color||BUCKET_COLORS[S.buckets.length%BUCKET_COLORS.length]; $('buErr').textContent=''; $('buDel').classList.toggle('hidden',!b); drawSwatches(); openMov('movBucket'); }
+function drawSwatches(){ $('buColors').innerHTML=BUCKET_COLORS.map(c=>`<button class="${c===buColor?'active':''}" style="background:${c}" onclick="buColor='${c}';drawSwatches()" aria-label="${c}"></button>`).join(''); }
+async function saveBucket(){ const name=$('buName').value.trim(); if(!name){ $('buErr').textContent='Name it.'; return; } const ex=editBucketId?S.buckets.find(x=>x.id===editBucketId):null;
+  const row={ id:ex?.id||uid(), garage_id:S.garage.id, name, color:buColor, target:parseFloat($('buTarget').value)||null, sort:ex?.sort??S.buckets.length, created_at:ex?.created_at||new Date().toISOString() };
+  try{ await db.upsert(TABLES.buckets,row); if(ex) Object.assign(ex,row); else S.buckets.push(row); closeMov('movBucket'); renderLedger(); toast(ex?'Bucket updated':'Bucket added'); }catch(e){ $('buErr').textContent=e.message; } }
+async function deleteBucket(){ if(!editBucketId||!confirm('Delete this bucket? Its entries move to Unassigned.')) return; try{ await db.remove(TABLES.buckets,editBucketId); S.buckets=S.buckets.filter(b=>b.id!==editBucketId); S.receipts.forEach(r=>{ if(r.bucket_id===editBucketId) r.bucket_id=null; }); if(fundBucket===editBucketId) fundBucket='all'; closeMov('movBucket'); renderLedger(); toast('Bucket deleted'); }catch(e){ $('buErr').textContent=e.message; } }
+function bucketOptions(sel, cur){ sel.innerHTML=`<option value="">Unassigned</option>`+sortedBuckets().map(b=>`<option value="${b.id}" ${b.id===cur?'selected':''}>${esc(b.name)}</option>`).join(''); }
+/* receipts */
+function openReceipt(preset){ $('rcAmt').value=preset?.amount||''; $('rcMemo').value=preset?.memo||''; $('rcDate').value=todayYmd(); $('rcErr').textContent=''; rcPhoto=''; drawRcPhoto(); $('rcKind').querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.v===(preset?.kind||'out'))); bucketOptions($('rcBucket'), preset?.bucket_id||(fundBucket!=='all'&&fundBucket!=='none'?fundBucket:'')); $('rcBucket').dataset.planId=preset?.plan_id||''; openMov('movReceipt'); setTimeout(()=>$('rcAmt').focus(),250); }
+function drawRcPhoto(){ $('rcPhotoWrap').innerHTML = rcPhoto?`<div class="ph"><img src="${rcPhoto}" alt=""><button class="x" onclick="rcPhoto='';drawRcPhoto()">×</button></div>`:`<button class="add" onclick="document.getElementById('rcPhotoIn').click()">+ photo</button>`; }
+async function pickRcPhoto(input){ const f=input.files&&input.files[0]; if(!f) return; $('rcErr').textContent='Uploading…'; try{ rcPhoto=await uploadPhoto(f,'receipts'); $('rcErr').textContent=''; drawRcPhoto(); }catch(e){ $('rcErr').textContent='Upload failed: '+(e.message||e); } input.value=''; }
 async function saveReceipt(){
   const amt=parseFloat($('rcAmt').value); const memo=$('rcMemo').value.trim();
   if(!(amt>0)){ $('rcErr').textContent='Enter an amount.'; return; } if(!memo){ $('rcErr').textContent='Say what it was for.'; return; }
-  const row={ id:uid(), garage_id:S.garage.id, user_id:me(), kind:segVal('rcKind'), amount:Math.round(amt*100)/100, memo, receipt_date:$('rcDate').value||todayYmd(), created_at:new Date().toISOString() };
+  const row={ id:uid(), garage_id:S.garage.id, user_id:me(), kind:segVal('rcKind'), amount:Math.round(amt*100)/100, memo, receipt_date:$('rcDate').value||todayYmd(), bucket_id:$('rcBucket').value||null, photo_url:rcPhoto||null, plan_id:$('rcBucket').dataset.planId||null, transfer_group:null, created_at:new Date().toISOString() };
   try{ await db.upsert(TABLES.receipts,row); S.receipts.push(row); closeMov('movReceipt'); renderCurrent(); toast('Logged'); }catch(e){ $('rcErr').textContent=e.message||'Could not save.'; }
 }
-async function deleteReceipt(id){ if(!confirm('Remove this entry?')) return; try{ await db.remove(TABLES.receipts,id); S.receipts=S.receipts.filter(r=>r.id!==id); renderCurrent(); toast('Removed'); }catch(e){ toast('Could not remove'); } }
+function openReceiptView(id){ const r=S.receipts.find(x=>x.id===id); if(!r) return; const canDel=(r.user_id===me()||isAdmin());
+  $('receiptViewModal').innerHTML=`<div class="modal-hd"><div class="modal-title">${r.transfer_group?'Transfer':(r.kind==='in'?'Paid in':'Spent')}</div><button class="modal-x" onclick="closeMov('movReceiptView')">×</button></div>
+    <div class="big-num" style="margin-bottom:8px">${r.kind==='in'?'+':'−'}${money(r.amount)}</div>
+    <div class="kv"><span>For</span><span class="v" style="white-space:normal;text-align:right">${esc(r.memo)}</span></div>
+    <div class="kv"><span>Bucket</span><span class="v">${esc(bucketName(r.bucket_id))}</span></div>
+    <div class="kv"><span>Date</span><span class="v">${fmtLong(r.receipt_date)}</span></div>
+    <div class="kv"><span>Logged by</span><span class="v">${esc(nameOf(r.user_id))}</span></div>
+    ${r.photo_url?`<div class="field" style="margin-top:12px"><label>Receipt</label><a href="${r.photo_url}" target="_blank" rel="noopener"><img src="${r.photo_url}" style="width:100%;border-radius:10px;border:1px solid var(--line)" alt=""></a></div>`:''}
+    ${canDel?`<div class="actions"><button class="btn danger" onclick="deleteReceipt('${r.id}')">${r.transfer_group?'Undo transfer':'Remove entry'}</button></div>`:''}`;
+  openMov('movReceiptView'); }
+async function deleteReceipt(id){ const r=S.receipts.find(x=>x.id===id); if(!r||!confirm(r.transfer_group?'Undo this transfer (both sides)?':'Remove this entry?')) return;
+  const ids=r.transfer_group?S.receipts.filter(x=>x.transfer_group===r.transfer_group).map(x=>x.id):[id];
+  try{ for(const i of ids) await db.remove(TABLES.receipts,i); S.receipts=S.receipts.filter(x=>!ids.includes(x.id)); closeMov('movReceiptView'); renderCurrent(); toast('Removed'); }catch(e){ toast('Could not remove'); } }
+/* transfers */
+function openTransfer(){ if(S.buckets.length<1){ toast('Make a bucket first'); return; } bucketOptions($('trFrom'),''); bucketOptions($('trTo'),S.buckets[0]?.id); $('trAmt').value=''; $('trMemo').value=''; $('trDate').value=todayYmd(); $('trErr').textContent=''; openMov('movTransfer'); }
+async function saveTransfer(){ const amt=parseFloat($('trAmt').value); const from=$('trFrom').value||null, to=$('trTo').value||null; if(!(amt>0)){ $('trErr').textContent='Enter an amount.'; return; } if(from===to){ $('trErr').textContent='Pick two different buckets.'; return; }
+  const g=uid(), memo=$('trMemo').value.trim()||`${bucketName(from)} → ${bucketName(to)}`, d=$('trDate').value||todayYmd(), now=new Date().toISOString();
+  const a={ id:uid(), garage_id:S.garage.id, user_id:me(), kind:'out', amount:amt, memo, receipt_date:d, bucket_id:from, transfer_group:g, photo_url:null, plan_id:null, created_at:now };
+  const b={ id:uid(), garage_id:S.garage.id, user_id:me(), kind:'in',  amount:amt, memo, receipt_date:d, bucket_id:to,   transfer_group:g, photo_url:null, plan_id:null, created_at:now };
+  try{ await db.upsert(TABLES.receipts,a); await db.upsert(TABLES.receipts,b); S.receipts.push(a,b); closeMov('movTransfer'); renderCurrent(); toast('Moved'); }catch(e){ $('trErr').textContent=e.message; } }
+/* monthly plan */
+let editPlanId=null;
+function openPlan(id){ editPlanId=id||null; const p=id?S.plan.find(x=>x.id===id):null; $('plHd').textContent=p?'Edit monthly item':'Monthly item'; $('plName').value=p?.name||''; $('plAmt').value=p?.amount||''; $('plDay').value=p?.day_of_month||''; $('plErr').textContent=''; $('plDel').classList.toggle('hidden',!p); $('plKind').querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.v===(p?.kind||'out'))); bucketOptions($('plBucket'),p?.bucket_id||''); openMov('movPlan'); }
+async function savePlan(){ const name=$('plName').value.trim(), amt=parseFloat($('plAmt').value); if(!name||!(amt>0)){ $('plErr').textContent='Name and amount are required.'; return; } const ex=editPlanId?S.plan.find(x=>x.id===editPlanId):null;
+  const row={ id:ex?.id||uid(), garage_id:S.garage.id, name, kind:segVal('plKind'), amount:Math.round(amt*100)/100, day_of_month:parseInt($('plDay').value)||null, bucket_id:$('plBucket').value||null, active:true, created_at:ex?.created_at||new Date().toISOString() };
+  try{ await db.upsert(TABLES.plan,row); if(ex) Object.assign(ex,row); else S.plan.push(row); closeMov('movPlan'); renderLedger(); toast('Saved'); }catch(e){ $('plErr').textContent=e.message; } }
+async function deletePlan(){ if(!editPlanId||!confirm('Delete this item?')) return; try{ await db.remove(TABLES.plan,editPlanId); S.plan=S.plan.filter(p=>p.id!==editPlanId); closeMov('movPlan'); renderLedger(); }catch(e){ $('plErr').textContent=e.message; } }
+function logPlan(id){ const p=S.plan.find(x=>x.id===id); if(!p) return; openReceipt({ amount:p.amount, memo:p.name, kind:p.kind, bucket_id:p.bucket_id, plan_id:p.id }); }
+/* export */
+function exportCsv(){
+  const q=v=>`"${String(v??'').replace(/"/g,'""')}"`; const rows=[...S.receipts].sort((a,b)=>(a.receipt_date+a.created_at).localeCompare(b.receipt_date+b.created_at)); let run=0;
+  const lines=[['Date','Type','Amount','Signed','Running balance','Bucket','Memo','Logged by','Transfer','Receipt photo'].join(',')];
+  for(const r of rows){ run+=signed(r); lines.push([r.receipt_date, r.kind==='in'?'In':'Out', (+r.amount).toFixed(2), signed(r).toFixed(2), run.toFixed(2), q(bucketName(r.bucket_id)), q(r.memo), q(nameOf(r.user_id)), r.transfer_group?'yes':'', q(r.photo_url||'')].join(',')); }
+  const blob=new Blob(['\ufeff'+lines.join('\r\n')],{type:'text/csv;charset=utf-8'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`garage43-ledger-${todayYmd()}.csv`; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },500); toast('CSV downloaded');
+}
 
 /* ═══ PROFILE ═══ */
 let _pendingPic;
