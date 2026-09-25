@@ -140,6 +140,11 @@ header .wordmark{font-size:24px;}
 @media(min-width:768px){.bike-grid{grid-template-columns:1fr 1fr;}}
 .bike-grid .bike{margin:0;}
 .bnav .bnlbl{font-size:11px;}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:8px 0 12px;}
+.stats .st{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 6px;text-align:center;}
+.stats .st .v{font-family:var(--mono);font-size:17px;font-weight:600;}
+.stats .st .l{font-size:10px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.4px;}
+.status.rejected{border-color:var(--danger);color:var(--danger);}
 .member-hd .nm{font-family:var(--disp);font-weight:700;font-size:24px;line-height:1;}
 .role-pill{font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:4px;border:1px solid var(--line);color:var(--muted);}
 .role-pill.owner{border-color:var(--accent);color:var(--accent);}
@@ -705,6 +710,7 @@ header .wordmark{font-size:24px;}
     </div>
     <div class="field"><label>Name</label><input class="inp" id="pfDisplay" maxlength="32" placeholder="Blake"></div>
     <div class="field"><label>Road name <span style="opacity:.6">(if you've got one)</span></label><input class="inp" id="pfRoad" maxlength="24" placeholder="Yeet"></div>
+    <div class="field"><label>Riding stats</label><div id="pfStats"></div></div>
     <div class="field"><label>My bikes</label><div id="pfBikeList"></div><button class="panel-link" style="margin-top:8px" onclick="openBike()">+ Add a bike</button></div>
     <div class="err" id="pfErr2"></div>
     <div class="actions"><button class="btn" onclick="saveProfile()">Save profile</button></div>
@@ -827,6 +833,7 @@ header .wordmark{font-size:24px;}
       <div class="field"><label>Date</label><input class="inp mono" id="rdDate" type="date"></div>
     </div>
     <div class="vsub" id="rdHint" style="margin:-6px 0 10px"></div>
+    <div class="vsub hidden" id="rdReq" style="margin:-4px 0 10px;color:var(--warn)">Not your bike — this will be sent to the owner to approve.</div>
     <div class="field"><label>Where'd you go? <span style="opacity:.6">(optional)</span></label><input class="inp" id="rdNote" placeholder="Holy Hill loop"></div>
     <div class="err" id="rdErr"></div>
     <div class="actions"><button class="btn" onclick="saveRide()">Log ride</button></div>
@@ -1153,7 +1160,7 @@ function renderBoard(){
     if(!w.enabled) continue;
     if((w.id==='fund'||w.id==='receipts') && !canSeeMoney()) continue;
     if(w.id==='bikes'){ const bs=bikesOf(me());
-      parts.push(`<div class="panel"><div class="panel-hd"><div class="panel-title">My bikes</div><button class="panel-link" onclick="${bs.length?'openRide()':'openProfile()'}">${bs.length?'Log ride':'Add a bike'}</button></div>${bs.length?bs.map(b=>{ const d=nextDue(b); return `<div class="row" style="cursor:pointer" onclick="openBikeView('${b.id}')"><div class="bike" style="margin:0;padding:0;border:none;background:none;gap:10px"><div class="ph" style="width:48px;height:36px">${b.photo_url?`<img src="${b.photo_url}" alt="">`:'🏍'}</div></div><div class="grow"><div class="t">${esc(b.name||bikeTitle(b))}</div><div class="s">${(+b.current_mileage||0).toLocaleString()} mi${d?` · <span style="color:${d.over?'var(--danger)':d.soon?'var(--warn)':'inherit'}">${esc(d.task)} ${d.label}</span>`:''}</div></div><button class="btn sm ghost" onclick="event.stopPropagation();openRide('${b.id}')">Ride</button></div>`; }).join(''):`<div class="empty">Add your bikes under My profile.</div>`}</div>`); }
+      parts.push(`<div class="panel"><div class="panel-hd"><div class="panel-title">My bikes</div><button class="panel-link" onclick="${bs.length?'openRide()':'openProfile()'}">${bs.length?'Log ride':'Add a bike'}</button></div>${bs.length?bs.map(b=>{ const d=nextDue(b); return `<div class="row" style="cursor:pointer" onclick="openBikeView('${b.id}')"><div class="bike" style="margin:0;padding:0;border:none;background:none;gap:10px"><div class="ph" style="width:48px;height:36px">${b.photo_url?`<img src="${b.photo_url}" alt="">`:'🏍'}</div></div><div class="grow"><div class="t">${esc(b.name||bikeTitle(b))}</div><div class="s">${(+b.current_mileage||0).toLocaleString()} mi${d?` · <span style="color:${d.over?'var(--danger)':d.soon?'var(--warn)':'inherit'}">${esc(d.task)} ${d.label}</span>`:''}${(n=>n?` · <span style="color:var(--warn)">${n} ride request${n===1?'':'s'}</span>`:'')(S.rides.filter(r=>r.bike_id===b.id&&r.status==='pending').length)}</div></div><button class="btn sm ghost" onclick="event.stopPropagation();openRide('${b.id}')">Ride</button></div>`; }).join(''):`<div class="empty">Add your bikes under My profile.</div>`}</div>`); }
     if(w.id==='fund'){ const b=balance();
       parts.push(`<div class="panel"><div class="panel-hd"><div class="panel-title">Garage fund</div><button class="panel-link" onclick="switchMain('ledger')">Ledger</button></div><div class="big-num ${b<0?'neg':''}">${money(b)}</div><div class="vsub">${S.receipts.length} entries</div></div>`); }
     if(w.id==='event'){ const e=upcomingEvents()[0];
@@ -1559,7 +1566,7 @@ function exportCsv(){
 let _pendingPic;
 function openProfile(){
   closeUserMenu(); const p=S.profile||{}; _pendingPic=p.avatar_url||'';
-  $('pfDisplay').value=p.display_name||''; $('pfRoad').value=p.road_name||''; $('pfErr2').textContent=''; renderPfBikes();
+  $('pfDisplay').value=p.display_name||''; $('pfRoad').value=p.road_name||''; $('pfErr2').textContent=''; renderPfBikes(); $('pfStats').innerHTML=statsHtml(me());
   drawPfAvatar(); openMov('movProfile');
 }
 function drawPfAvatar(){ $('pfAvatar').innerHTML=_pendingPic?`<img src="${_pendingPic}" alt="">`:initials($('pfDisplay').value||myName()); $('pfPicClear').classList.toggle('hidden',!_pendingPic); }
@@ -1620,10 +1627,20 @@ async function deleteBike(){
   try{ await db.remove(TABLES.bikes,editBikeId); S.bikes=S.bikes.filter(b=>b.id!==editBikeId); closeMov('movBike'); renderPfBikes(); toast('Bike removed'); }catch(e){ $('bkErr').textContent=e.message; }
 }
 
+/* ═══ RIDER STATS ═══ */
+function ridesBy(userId){ return S.rides.filter(r=>r.user_id===userId && (r.status||'approved')==='approved'); }
+function riderStats(userId){ const rs=ridesBy(userId); const y=todayYmd().slice(0,4), m=todayYmd().slice(0,7);
+  const sum=a=>a.reduce((s,r)=>s+(+r.miles||0),0);
+  const perBike={}; rs.forEach(r=>{ perBike[r.bike_id]=(perBike[r.bike_id]||0)+(+r.miles||0); });
+  return { total:sum(rs), year:sum(rs.filter(r=>r.ride_date.startsWith(y))), month:sum(rs.filter(r=>r.ride_date.startsWith(m))), rides:rs.length, perBike }; }
+function statsHtml(userId){ const st=riderStats(userId); const bikes=Object.entries(st.perBike).sort((a,b)=>b[1]-a[1]);
+  return `<div class="stats"><div class="st"><div class="v">${st.total.toLocaleString()}</div><div class="l">miles</div></div><div class="st"><div class="v">${st.year.toLocaleString()}</div><div class="l">this year</div></div><div class="st"><div class="v">${st.month.toLocaleString()}</div><div class="l">this month</div></div><div class="st"><div class="v">${st.rides}</div><div class="l">rides</div></div></div>`
+    + (bikes.length?`<div class="mini" style="margin:-6px 0 10px">${bikes.map(([id,mi])=>{ const b=S.bikes.find(x=>x.id===id); return `${esc(b?(b.name||bikeTitle(b)):'a bike')} ${mi.toLocaleString()} mi${b&&b.added_by!==userId?' <span style="opacity:.7">(borrowed)</span>':''}`; }).join(' · ')}</div>`:''); }
+
 /* ═══ RIDES & MAINTENANCE ═══ */
 const SERVICE_PRESETS=['Oil change','Oil filter','Brake pads','Brake fluid','Front tire','Rear tire','Chain & sprockets','Belt','Air filter','Spark plugs','Coolant','Valve check','Battery','Fork seals','Inspection'];
 function maintOf(bikeId){ return S.maint.filter(m=>m.bike_id===bikeId); }
-function ridesOf(bikeId){ return S.rides.filter(r=>r.bike_id===bikeId).sort((a,b)=>(b.ride_date+b.created_at).localeCompare(a.ride_date+a.created_at)); }
+function ridesOf(bikeId){ return S.rides.filter(r=>r.bike_id===bikeId && (r.status||'approved')!=='rejected').sort((a,b)=>(b.ride_date+b.created_at).localeCompare(a.ride_date+a.created_at)); }
 function canEditBike(b){ return b && (b.added_by===me() || isAdmin()); }
 function dueInfo(b, m){ const mi=+b.current_mileage||0; const t=todayYmd(); let over=false, soon=false, label='';
   if(m.due_mileage){ const left=m.due_mileage-mi; over=left<=0; soon=!over&&left<=300; label=over?`${Math.abs(left).toLocaleString()} mi overdue`:`in ${left.toLocaleString()} mi`; }
@@ -1633,34 +1650,47 @@ function nextDue(b){ const pend=maintOf(b.id).filter(m=>!m.completed).map(m=>due
 
 function openBikeView(id){
   const b=S.bikes.find(x=>x.id===id); if(!b) return; const mine=canEditBike(b); const rides=ridesOf(id); const pend=maintOf(id).filter(m=>!m.completed); const done=maintOf(id).filter(m=>m.completed).sort((x,y)=>(y.completed_date||'').localeCompare(x.completed_date||''));
-  const spent=done.reduce((s,m)=>s+(+m.parts_cost||0)+(+m.labor_cost||0),0);
+  const spent=done.reduce((s,m)=>s+(+m.parts_cost||0)+(+m.labor_cost||0),0); const reqs=S.rides.filter(r=>r.bike_id===id && r.status==='pending');
   $('bikeViewModal').innerHTML=`<div class="modal-hd"><div class="modal-title">${esc(b.name||bikeTitle(b))}</div><button class="modal-x" onclick="closeMov('movBikeView')">×</button></div>
     <div class="bike-hero">${b.photo_url?`<img src="${b.photo_url}" alt="">`:'🏍'}</div>
     <div class="vsub" style="margin:-6px 0 10px">${b.name?esc(bikeTitle(b))+' · ':''}${esc(nameOf(b.added_by))}${mine?` · <button class="panel-link" onclick="closeMov('movBikeView');openBike('${b.id}')">edit bike</button>`:''}</div>
-    <div class="odo"><div><div class="u">ODOMETER</div><div class="n">${(+b.current_mileage||0).toLocaleString()}</div></div>${mine?`<button class="btn sm" onclick="openRide('${b.id}')">Log ride</button>`:''}</div>
+    <div class="odo"><div><div class="u">ODOMETER</div><div class="n">${(+b.current_mileage||0).toLocaleString()}</div></div><button class="btn sm ${mine?'':'ghost'}" onclick="openRide('${b.id}')">${mine?'Log ride':'I rode this'}</button></div>
+    ${mine&&reqs.length?`<div class="panel-hd"><div class="panel-title">Ride requests</div><span class="status pending">${reqs.length}</span></div>${reqs.map(r=>`<div class="due">${av(r.user_id,'sm')}<div class="grow"><div class="t">${esc(nameOf(r.user_id))} · +${(+r.miles).toLocaleString()} mi${r.note?' · '+esc(r.note):''}</div><div class="s">${fmtDate(r.ride_date)} · odo → ${(+r.odometer).toLocaleString()}</div></div><button class="btn sm" onclick="decideRide('${r.id}',true)">Approve</button><button class="btn sm danger" onclick="decideRide('${r.id}',false)">Decline</button></div>`).join('')}<div style="height:12px"></div>`:''}
     <div class="panel-hd"><div class="panel-title">Coming up</div>${mine?`<button class="panel-link" onclick="openDue('${b.id}')">+ Add</button>`:''}</div>
     ${pend.length?pend.map(m=>{ const d=dueInfo(b,m); return `<div class="due ${d.over?'over':d.soon?'soon':''}"><div class="grow"><div class="t">${esc(m.task)}</div><div class="s">${d.label}${m.notes?' · '+esc(m.notes):''}</div></div>${mine?`<button class="btn sm ghost" onclick="openService('${b.id}',null,'${m.id}')">Done</button>`:''}</div>`; }).join(''):`<div class="vsub" style="padding:6px 0 10px">Nothing scheduled.</div>`}
     <div class="panel-hd" style="margin-top:14px"><div class="panel-title">Service history</div>${mine?`<button class="panel-link" onclick="openService('${b.id}')">+ Log service</button>`:''}</div>
     ${done.length?done.map(m=>`<div class="due" ${mine?`style="cursor:pointer" onclick="openService('${b.id}','${m.id}')"`:''}>${m.photo_url?`<img class="rphoto" src="${m.photo_url}" alt="">`:''}<div class="grow"><div class="t">${esc(m.task)}</div><div class="s">${m.completed_date?fmtDate(m.completed_date):''}${m.completed_mileage?' · '+(+m.completed_mileage).toLocaleString()+' mi':''}${(+m.parts_cost||+m.labor_cost)?' · '+money((+m.parts_cost||0)+(+m.labor_cost||0)):''}${m.notes?' · '+esc(m.notes):''}</div></div></div>`).join('')+`<div class="mini" style="margin-top:8px">${done.length} services · ${money(spent)} total</div>`:`<div class="vsub" style="padding:6px 0 10px">No service logged yet.</div>`}
     <div class="panel-hd" style="margin-top:14px"><div class="panel-title">Rides</div></div>
-    ${rides.length?rides.slice(0,8).map(r=>`<div class="due"><div class="grow"><div class="t">${r.miles?`+${(+r.miles).toLocaleString()} mi`:'—'}${r.note?' · '+esc(r.note):''}</div><div class="s">${fmtDate(r.ride_date)} · odo ${(+r.odometer).toLocaleString()}</div></div>${mine?`<button class="rel" style="background:none;border:none;color:var(--danger);font-size:12px" onclick="deleteRide('${r.id}')">×</button>`:''}</div>`).join(''):`<div class="vsub" style="padding:6px 0 10px">No rides logged.</div>`}`;
+    ${rides.length?rides.slice(0,8).map(r=>`<div class="due">${av(r.user_id,'sm')}<div class="grow"><div class="t">${r.miles?`+${(+r.miles).toLocaleString()} mi`:'—'}${r.user_id!==b.added_by?' · '+esc(nameOf(r.user_id)):''}${r.note?' · '+esc(r.note):''}${r.status==='pending'?' <span class="status pending">pending</span>':''}</div><div class="s">${fmtDate(r.ride_date)} · odo ${(+r.odometer).toLocaleString()}</div></div>${mine?`<button class="rel" style="background:none;border:none;color:var(--danger);font-size:12px" onclick="deleteRide('${r.id}')">×</button>`:''}</div>`).join(''):`<div class="vsub" style="padding:6px 0 10px">No rides logged.</div>`}`;
   openMov('movBikeView');
 }
 /* rides */
 let rdBikeId=null;
 function openRide(bikeId){
-  const mine=bikesOf(me()); if(!mine.length){ toast('Add a bike first'); openProfile(); return; }
-  $('rdBike').innerHTML=mine.map(b=>`<option value="${b.id}">${esc(b.name||bikeTitle(b))}</option>`).join(''); $('rdBike').value=bikeId||mine[0].id;
+  const mine=bikesOf(me()); const others=S.bikes.filter(b=>b.added_by!==me()).sort((a,b)=>nameOf(a.added_by).localeCompare(nameOf(b.added_by)));
+  if(!S.bikes.length){ toast('Add a bike first'); openProfile(); return; }
+  const opt=b=>`<option value="${b.id}">${esc(b.name||bikeTitle(b))}${b.added_by!==me()?' — '+esc(nameOf(b.added_by)):''}</option>`;
+  $('rdBike').innerHTML=(mine.length?`<optgroup label="My bikes">${mine.map(opt).join('')}</optgroup>`:'')+(others.length?`<optgroup label="Crew bikes">${others.map(opt).join('')}</optgroup>`:''); $('rdBike').value=bikeId||(mine[0]||others[0]).id;
   $('rdDate').value=todayYmd(); $('rdNote').value=''; $('rdNum').value=''; $('rdErr').textContent=''; $('rdMode').querySelectorAll('button').forEach(x=>x.classList.toggle('active',x.dataset.v==='odo')); rdBikeChanged(); openMov('movRide'); setTimeout(()=>$('rdNum').focus(),250);
 }
 function rdBikeChanged(){ const b=S.bikes.find(x=>x.id===$('rdBike').value); rdBikeId=b?.id; rdModeChanged(); }
-function rdModeChanged(){ const b=S.bikes.find(x=>x.id===rdBikeId); const cur=+b?.current_mileage||0; const odo=segVal('rdMode')==='odo'; $('rdNumLbl').textContent=odo?'Odometer now':'Miles ridden'; $('rdNum').placeholder=odo?String(cur+50):'42'; $('rdHint').textContent=`Currently ${cur.toLocaleString()} mi`; }
+function rdModeChanged(){ const b=S.bikes.find(x=>x.id===rdBikeId); const cur=+b?.current_mileage||0; $('rdReq').classList.toggle('hidden', !b || canEditBike(b)); const odo=segVal('rdMode')==='odo'; $('rdNumLbl').textContent=odo?'Odometer now':'Miles ridden'; $('rdNum').placeholder=odo?String(cur+50):'42'; $('rdHint').textContent=`Currently ${cur.toLocaleString()} mi`; }
 async function saveRide(){
   const b=S.bikes.find(x=>x.id===rdBikeId); const n=parseInt($('rdNum').value); const cur=+b.current_mileage||0; if(!(n>=0)){ $('rdErr').textContent='Enter a number.'; return; }
   const odo=segVal('rdMode')==='odo'?n:cur+n; const miles=odo-cur; if(odo<cur){ $('rdErr').textContent=`That's below the current ${cur.toLocaleString()} mi. Edit the bike if the odometer is wrong.`; return; }
-  const row={ id:uid(), garage_id:S.garage.id, bike_id:b.id, user_id:me(), ride_date:$('rdDate').value||todayYmd(), odometer:odo, miles, note:$('rdNote').value.trim()||null, created_at:new Date().toISOString() };
-  try{ await db.upsert(TABLES.rides,row); S.rides.push(row); b.current_mileage=odo; await db.upsert(TABLES.bikes,{...b}); closeMov('movRide'); if($('movBikeView').classList.contains('open')) openBikeView(b.id); renderCurrent(); toast(`+${miles.toLocaleString()} mi logged`); }
+  const own=canEditBike(b);
+  const row={ id:uid(), garage_id:S.garage.id, bike_id:b.id, user_id:me(), ride_date:$('rdDate').value||todayYmd(), odometer:odo, miles, note:$('rdNote').value.trim()||null, status:own?'approved':'pending', approved_by:own?me():null, approved_at:own?new Date().toISOString():null, created_at:new Date().toISOString() };
+  try{ await db.upsert(TABLES.rides,row); S.rides.push(row); if(own){ b.current_mileage=odo; await db.upsert(TABLES.bikes,{...b}); } closeMov('movRide'); if($('movBikeView').classList.contains('open')) openBikeView(b.id); renderCurrent(); toast(own?`+${miles.toLocaleString()} mi logged`:'Sent to the owner to approve'); }
   catch(e){ $('rdErr').textContent=e.message||'Could not save.'; }
+}
+async function decideRide(id, ok){
+  const r=S.rides.find(x=>x.id===id); const b=S.bikes.find(x=>x.id===r?.bike_id); if(!r||!b) return;
+  const patch={ status:ok?'approved':'rejected', approved_by:me(), approved_at:new Date().toISOString() };
+  try{ if(LOCAL) await db.upsert(TABLES.rides,{...r,...patch}); else { const { error } = await sb.from(TABLES.rides).update(patch).eq('id',id); if(error) throw error; }
+    Object.assign(r,patch);
+    if(ok){ const cur=+b.current_mileage||0; const odo=Math.max(cur, cur+(+r.miles||0)); b.current_mileage=odo; await db.upsert(TABLES.bikes,{...b}); }
+    openBikeView(b.id); renderCurrent(); toast(ok?'Ride approved':'Declined'); }
+  catch(e){ toast(e.message||'Could not update'); }
 }
 async function deleteRide(id){ const r=S.rides.find(x=>x.id===id); if(!r||!confirm('Remove this ride? The odometer will not be rolled back.')) return; try{ await db.remove(TABLES.rides,id); S.rides=S.rides.filter(x=>x.id!==id); openBikeView(r.bike_id); }catch(e){ toast('Could not remove'); } }
 /* service */
@@ -1725,7 +1755,7 @@ function openMember(userId){
   const canManage = isOwner() && userId!==me() && role!=='owner'; const rank=rankOf(userId);
   $('memberModal').innerHTML=`<div class="modal-hd"><div class="modal-title">Crew member</div><button class="modal-x" onclick="closeMov('movMember')">×</button></div>
     <div class="member-hd">${av(userId,'lg')}<div><div class="nm">${esc(m.name)}</div>${m.road_name?`<div class="road" style="margin-top:4px">“${esc(m.road_name)}”</div>`:''}<div style="margin-top:6px"><span class="role-pill ${rank}">${rank}</span> ${role!=='personnel'?`<span class="role-pill ${role}">${role}</span>`:''}</div></div></div>
-    <div class="panel-hd"><div class="panel-title">Bikes</div></div>${bs.length?bs.map(b=>bikeCard(b,false)).join(''):`<div class="vsub">No bikes listed.</div>`}
+    <div class="panel-hd"><div class="panel-title">Riding</div></div>${statsHtml(userId)}<div class="panel-hd"><div class="panel-title">Bikes</div></div>${bs.length?bs.map(b=>bikeCard(b,false)).join(''):`<div class="vsub">No bikes listed.</div>`}
     ${canManage?`<div class="panel-hd" style="margin-top:16px"><div class="panel-title">Rank</div></div><div class="seg" id="mbRank"><button class="${rank==='hangaround'?'active':''}" onclick="setRank('${userId}','hangaround')">Hangaround</button><button class="${rank==='prospect'?'active':''}" onclick="setRank('${userId}','prospect')">Prospect</button><button class="${rank==='member'?'active':''}" onclick="setRank('${userId}','member')">Member</button></div><div class="vsub" style="margin:6px 0 14px">Rank decides which posts and events they can see. Managers always see everything.</div><div class="panel-hd"><div class="panel-title">Role</div></div><div class="seg" id="mbRole"><button class="${role==='manager'?'active':''}" data-v="manager" onclick="setRole('${userId}','manager')">Manager</button><button class="${role==='personnel'?'active':''}" data-v="personnel" onclick="setRole('${userId}','personnel')">Personnel</button></div><div class="vsub" style="margin:6px 0 14px">Managers can pin posts, customize the board, and clear anyone's events, receipts, or lift slots. Money still needs member rank.</div><div class="actions"><button class="btn danger" onclick="removeMember('${userId}')">Remove from garage</button></div>`:''}`;
   openMov('movMember');
 }
