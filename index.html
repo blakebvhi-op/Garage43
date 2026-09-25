@@ -132,6 +132,14 @@ header .wordmark{font-size:24px;}
 .due.over .t{color:var(--danger);}
 .due.soon .t{color:var(--warn);}
 .presets{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;}
+.filters{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0 10px;}
+.filters select,.filters input{padding:8px 10px;font-size:13px;}
+.filters .full{grid-column:1 / -1;}
+@media(min-width:768px){.filters{grid-template-columns:repeat(4,1fr);}.filters .full{grid-column:span 4;}}
+.bike-grid{display:grid;grid-template-columns:1fr;gap:8px;}
+@media(min-width:768px){.bike-grid{grid-template-columns:1fr 1fr;}}
+.bike-grid .bike{margin:0;}
+.bnav .bnlbl{font-size:11px;}
 .member-hd .nm{font-family:var(--disp);font-weight:700;font-size:24px;line-height:1;}
 .role-pill{font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:4px;border:1px solid var(--line);color:var(--muted);}
 .role-pill.owner{border-color:var(--accent);color:var(--accent);}
@@ -461,6 +469,7 @@ header .wordmark{font-size:24px;}
       <button class="dtab" id="dtCal" onclick="switchMain('cal')">Calendar</button>
       <button class="dtab" id="dtLift" onclick="switchMain('lift')">Lift</button>
       <button class="dtab" id="dtForum" onclick="switchMain('forum')">Forum</button>
+      <button class="dtab" id="dtBikes" onclick="switchMain('bikes')">Bikes</button>
       <button class="dtab" id="dtLedger" onclick="switchMain('ledger')">Funds</button>
     </div>
     <button class="btn sm dadd" id="daddBtn" onclick="handleFab()">+ <span id="daddLbl">New event</span></button>
@@ -486,6 +495,7 @@ header .wordmark{font-size:24px;}
   <button class="bnbtn" id="bnCal" onclick="switchMain('cal')"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><div class="bnlbl">Calendar</div><div class="bnbadge" id="bnCalBadge"></div></button>
   <button class="bnbtn" id="bnLift" onclick="switchMain('lift')"><svg viewBox="0 0 24 24"><path d="M4 20h16M6 20V9h12v11M9 9V4h6v5M12 4v5"/></svg><div class="bnlbl">Lift</div></button>
   <button class="bnbtn" id="bnForum" onclick="switchMain('forum')"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-8 8H8l-5 3V12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8z"/></svg><div class="bnlbl">Forum</div><div class="bnbadge" id="bnForumBadge"></div></button>
+  <button class="bnbtn" id="bnBikes" onclick="switchMain('bikes')"><svg viewBox="0 0 24 24"><circle cx="5.5" cy="17" r="3.5"/><circle cx="18.5" cy="17" r="3.5"/><path d="M5.5 17l3-8h4l3 4h3M12.5 9l-1.5-4h3M9 9h4"/></svg><div class="bnlbl">Bikes</div></button>
   <button class="bnbtn" id="bnLedger" onclick="switchMain('ledger')"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg><div class="bnlbl">Funds</div></button>
 </div>
 <button class="fab" id="fabBtn" onclick="handleFab()" aria-label="Add">+</button>
@@ -546,6 +556,28 @@ header .wordmark{font-size:24px;}
       </div>
     </div>
     <div class="vscroll" id="forumBody"></div>
+  </div>
+
+  <div class="view" id="vBikes">
+    <div class="vhead">
+      <div><div class="vtitle">Garage Bikes</div><div class="vsub" id="bikesSub"></div></div>
+      <div class="chips" id="bikeChips">
+        <button class="chip active" data-f="all" onclick="setBikeSvc('all')">All</button>
+        <button class="chip" data-f="due" onclick="setBikeSvc('due')">Needs service</button>
+        <button class="chip" data-f="over" onclick="setBikeSvc('over')">Overdue</button>
+        <button class="chip" data-f="mine" onclick="setBikeSvc('mine')">Mine</button>
+      </div>
+    </div>
+    <div class="vscroll">
+      <div class="filters">
+        <input class="inp full" id="bkSearch" placeholder="Search name, make, model, rider…" oninput="renderBikes()">
+        <select class="inp" id="bkRider" onchange="renderBikes()"></select>
+        <select class="inp" id="bkMake" onchange="renderBikes()"></select>
+        <select class="inp" id="bkYearF" onchange="renderBikes()"></select>
+        <select class="inp" id="bkSort" onchange="renderBikes()"><option value="name">Sort: name</option><option value="miles_desc">Mileage high → low</option><option value="miles_asc">Mileage low → high</option><option value="year_desc">Year newest</option><option value="year_asc">Year oldest</option><option value="due">Service most urgent</option></select>
+      </div>
+      <div class="bike-grid" id="bikeGrid"></div>
+    </div>
   </div>
 
   <div class="view" id="vLedger">
@@ -775,6 +807,10 @@ header .wordmark{font-size:24px;}
 
 <div class="mov" id="movReceiptView" onclick="if(event.target===this)closeMov('movReceiptView')">
   <div class="modal" id="receiptViewModal"></div>
+</div>
+
+<div class="mov" id="movAllBikes" onclick="if(event.target===this)closeMov('movAllBikes')">
+  <div class="modal" id="allBikesModal"></div>
 </div>
 
 <div class="mov" id="movBikeView" onclick="if(event.target===this)closeMov('movBikeView')">
@@ -1068,15 +1104,15 @@ function openTheme(){ openMov('movTheme'); }
 /* ═══ NAV ═══ */
 function switchMain(v){
   mainView=v; closeUserMenu();
-  const map={ board:'vBoard', cal:'vCal', lift:'vLift', forum:'vForum', ledger:'vLedger' };
+  const map={ board:'vBoard', cal:'vCal', lift:'vLift', forum:'vForum', bikes:'vBikes', ledger:'vLedger' };
   document.querySelectorAll('.view').forEach(x=>x.classList.remove('active')); $(map[v]).classList.add('active');
   const key=v.charAt(0).toUpperCase()+v.slice(1);
-  ['Board','Cal','Lift','Forum','Ledger'].forEach(k=>{ $('bn'+k).classList.toggle('active',k===key); $('dt'+k).classList.toggle('active',k===key); });
-  $('daddLbl').textContent={ board:'New event', cal:'New event', lift:'Claim slot', forum:'New post', ledger:(fundTab==='plan'?'Add monthly item':'Log receipt') }[v];
+  ['Board','Cal','Lift','Forum','Bikes','Ledger'].forEach(k=>{ $('bn'+k).classList.toggle('active',k===key); $('dt'+k).classList.toggle('active',k===key); });
+  $('daddLbl').textContent={ board:'New event', cal:'New event', lift:'Claim slot', forum:'New post', bikes:'Add a bike', ledger:(fundTab==='plan'?'Add monthly item':'Log receipt') }[v];
   renderCurrent();
 }
-function renderCurrent(){ ({ board:renderBoard, cal:renderCal, lift:renderLift, forum:renderForum, ledger:renderLedger })[mainView](); }
-function handleFab(){ ({ board:openEvent, cal:openEvent, lift:()=>openLift(), forum:openPost, ledger:()=>fundTab==='plan'?openPlan():openReceipt() })[mainView](); }
+function renderCurrent(){ ({ board:renderBoard, cal:renderCal, lift:renderLift, forum:renderForum, bikes:renderBikes, ledger:renderLedger })[mainView](); }
+function handleFab(){ ({ board:openEvent, cal:openEvent, lift:()=>openLift(), forum:openPost, bikes:()=>openBike(), ledger:()=>fundTab==='plan'?openPlan():openReceipt() })[mainView](); }
 function toggleUserMenu(){ $('userMenu').classList.toggle('open'); }
 function closeUserMenu(){ $('userMenu').classList.remove('open'); }
 document.addEventListener('click', e=>{ if(!e.target.closest('#userMenu') && !e.target.closest('#userBadge')) closeUserMenu(); });
@@ -1657,6 +1693,31 @@ function openDue(bikeId){ duBikeId=bikeId; presetChips('duPresets','duTask'); $(
 async function saveDue(){ const task=$('duTask').value.trim(); const mi=parseInt($('duMiles').value)||null; const dd=$('duDate').value||null; if(!task){ $('duErr').textContent='What needs doing?'; return; } if(!mi&&!dd){ $('duErr').textContent='Give it a mileage or a date.'; return; }
   const row={ id:uid(), garage_id:S.garage.id, bike_id:duBikeId, task, due_date:dd, due_mileage:mi, notes:$('duNotes').value.trim()||null, parts_cost:0, labor_cost:0, photo_url:null, completed:false, completed_date:null, completed_mileage:null, created_at:new Date().toISOString() };
   try{ await db.upsert(TABLES.maint,row); S.maint.push(row); closeMov('movDue'); openBikeView(duBikeId); renderCurrent(); }catch(e){ $('duErr').textContent=e.message; } }
+
+/* ═══ BIKES TAB ═══ */
+let bikeSvc='all';
+function setBikeSvc(f){ bikeSvc=f; document.querySelectorAll('#bikeChips .chip').forEach(c=>c.classList.toggle('active',c.dataset.f===f)); renderBikes(); }
+function fillSelect(id, label, values, cur){ const sel=$(id); sel.innerHTML=`<option value="">${label}</option>`+values.map(v=>`<option value="${esc(v)}" ${v===cur?'selected':''}>${esc(v)}</option>`).join(''); }
+function renderBikes(){
+  const riderCur=$('bkRider').value, makeCur=$('bkMake').value, yearCur=$('bkYearF').value;
+  const riders=[...new Set(S.bikes.map(b=>b.added_by))].map(id=>({id,name:nameOf(id)})).sort((a,b)=>a.name.localeCompare(b.name));
+  $('bkRider').innerHTML=`<option value="">All riders</option>`+riders.map(r=>`<option value="${r.id}" ${r.id===riderCur?'selected':''}>${esc(r.name)}</option>`).join('');
+  fillSelect('bkMake','All makes',[...new Set(S.bikes.map(b=>b.make).filter(Boolean))].sort(),makeCur);
+  fillSelect('bkYearF','All years',[...new Set(S.bikes.map(b=>b.year).filter(Boolean))].sort((a,b)=>b.localeCompare(a)),yearCur);
+  const q=$('bkSearch').value.trim().toLowerCase(); const sort=$('bkSort').value;
+  let list=S.bikes.map(b=>({ b, d:nextDue(b) }));
+  if(bikeSvc==='due') list=list.filter(x=>x.d); if(bikeSvc==='over') list=list.filter(x=>x.d?.over); if(bikeSvc==='mine') list=list.filter(x=>x.b.added_by===me());
+  if($('bkRider').value) list=list.filter(x=>x.b.added_by===$('bkRider').value);
+  if($('bkMake').value) list=list.filter(x=>x.b.make===$('bkMake').value);
+  if($('bkYearF').value) list=list.filter(x=>x.b.year===$('bkYearF').value);
+  if(q) list=list.filter(x=>[x.b.name,x.b.make,x.b.model,x.b.year,x.b.notes,nameOf(x.b.added_by)].join(' ').toLowerCase().includes(q));
+  const mi=x=>+x.b.current_mileage||0, yr=x=>+x.b.year||0, urg=x=>x.d?(x.d.over?0:x.d.soon?1:2):3;
+  list.sort((a,b)=>({ name:()=>(a.b.name||bikeTitle(a.b)).localeCompare(b.b.name||bikeTitle(b.b)), miles_desc:()=>mi(b)-mi(a), miles_asc:()=>mi(a)-mi(b), year_desc:()=>yr(b)-yr(a), year_asc:()=>yr(a)-yr(b), due:()=>urg(a)-urg(b)||mi(b)-mi(a) })[sort]());
+  const over=S.bikes.filter(b=>nextDue(b)?.over).length;
+  $('bikesSub').textContent=`${list.length} of ${S.bikes.length} bike${S.bikes.length===1?'':'s'}${over?` · ${over} overdue`:''}`;
+  $('bikeGrid').innerHTML = list.length ? list.map(({b,d})=>`<div class="bike tap" onclick="openBikeView('${b.id}')"><div class="ph">${b.photo_url?`<img src="${b.photo_url}" alt="">`:'🏍'}</div><div class="grow"><div class="bn">${esc(b.name||bikeTitle(b))}</div><div class="bs">${b.name?esc(bikeTitle(b))+' · ':''}${esc(nameOf(b.added_by))} · ${(+b.current_mileage||0).toLocaleString()} mi</div><div class="bs" style="margin-top:2px;color:${d?(d.over?'var(--danger)':d.soon?'var(--warn)':'var(--muted)'):'var(--muted)'}">${d?`${esc(d.task)} ${d.label}`:'nothing due'}</div></div></div>`).join('')
+    : `<div class="empty"><b>No bikes match</b>${S.bikes.length?'Try clearing a filter.':'Add yours with the + button.'}</div>`;
+}
 
 /* ═══ MEMBER DETAIL / ROLES ═══ */
 function openMember(userId){
