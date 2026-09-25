@@ -119,6 +119,19 @@ header .wordmark{font-size:24px;}
 .bike-ph{width:100%;height:150px;border-radius:10px;background:var(--bg);border:1px dashed var(--line);display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer;color:var(--muted);font-size:13px;}
 .bike-ph img{width:100%;height:100%;object-fit:cover;}
 .member-hd{display:flex;align-items:center;gap:14px;margin-bottom:12px;}
+.bike-hero{border-radius:12px;overflow:hidden;background:var(--panel2);height:170px;margin-bottom:12px;display:flex;align-items:center;justify-content:center;font-size:44px;}
+.bike-hero img{width:100%;height:100%;object-fit:cover;}
+.odo{display:flex;align-items:baseline;justify-content:space-between;gap:10px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:12px;}
+.odo .n{font-family:var(--mono);font-size:30px;font-weight:600;letter-spacing:1px;}
+.odo .u{font-family:var(--mono);font-size:12px;color:var(--muted);}
+.due{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--line);}
+.due:first-child{border-top:none;}
+.due .grow{flex:1;min-width:0;}
+.due .t{font-weight:500;}
+.due .s{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:2px;}
+.due.over .t{color:var(--danger);}
+.due.soon .t{color:var(--warn);}
+.presets{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;}
 .member-hd .nm{font-family:var(--disp);font-weight:700;font-size:24px;line-height:1;}
 .role-pill{font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:4px;border:1px solid var(--line);color:var(--muted);}
 .role-pill.owner{border-color:var(--accent);color:var(--accent);}
@@ -764,6 +777,64 @@ header .wordmark{font-size:24px;}
   <div class="modal" id="receiptViewModal"></div>
 </div>
 
+<div class="mov" id="movBikeView" onclick="if(event.target===this)closeMov('movBikeView')">
+  <div class="modal" id="bikeViewModal"></div>
+</div>
+
+<div class="mov" id="movRide" onclick="if(event.target===this)closeMov('movRide')">
+  <div class="modal">
+    <div class="modal-hd"><div class="modal-title">Log a ride</div><button class="modal-x" onclick="closeMov('movRide')">×</button></div>
+    <div class="field"><label>Bike</label><select class="inp" id="rdBike" onchange="rdBikeChanged()"></select></div>
+    <div class="field"><div class="seg" id="rdMode"><button class="active" data-v="odo" onclick="segPick('rdMode',this);rdModeChanged()">Odometer reading</button><button data-v="miles" onclick="segPick('rdMode',this);rdModeChanged()">Miles ridden</button></div></div>
+    <div class="field-row">
+      <div class="field"><label id="rdNumLbl">Odometer now</label><input class="inp mono" id="rdNum" type="number" inputmode="numeric" min="0" placeholder="12480"></div>
+      <div class="field"><label>Date</label><input class="inp mono" id="rdDate" type="date"></div>
+    </div>
+    <div class="vsub" id="rdHint" style="margin:-6px 0 10px"></div>
+    <div class="field"><label>Where'd you go? <span style="opacity:.6">(optional)</span></label><input class="inp" id="rdNote" placeholder="Holy Hill loop"></div>
+    <div class="err" id="rdErr"></div>
+    <div class="actions"><button class="btn" onclick="saveRide()">Log ride</button></div>
+  </div>
+</div>
+
+<div class="mov" id="movService" onclick="if(event.target===this)closeMov('movService')">
+  <div class="modal">
+    <div class="modal-hd"><div class="modal-title" id="svHd">Log service</div><button class="modal-x" onclick="closeMov('movService')">×</button></div>
+    <div class="field"><label>What was done</label><div class="presets" id="svPresets"></div><input class="inp" id="svTask" placeholder="Or type it…"></div>
+    <div class="field-row">
+      <div class="field"><label>Date</label><input class="inp mono" id="svDate" type="date"></div>
+      <div class="field"><label>Mileage at service</label><input class="inp mono" id="svMiles" type="number" inputmode="numeric" min="0"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Parts $</label><input class="inp mono" id="svParts" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
+      <div class="field"><label>Labor $</label><input class="inp mono" id="svLabor" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
+    </div>
+    <div class="field"><label>Notes</label><textarea class="inp" id="svNotes" placeholder="Brand, part numbers, torque, whatever you'll want next time" style="min-height:60px"></textarea></div>
+    <div class="field"><label>Photo <span style="opacity:.6">(optional)</span></label><div class="photos" id="svPhotoWrap"></div><input type="file" id="svPhotoIn" accept="image/*" style="display:none" onchange="pickSvPhoto(this)"></div>
+    <div class="check" style="border-top:1px solid var(--line);margin-top:4px"><input type="checkbox" id="svRemind" onchange="document.getElementById('svRemindWrap').classList.toggle('hidden',!this.checked)"><label for="svRemind">Remind me when it's due again</label></div>
+    <div id="svRemindWrap" class="hidden"><div class="field-row">
+      <div class="field"><label>Every ___ miles</label><input class="inp mono" id="svEveryMi" type="number" inputmode="numeric" min="0" placeholder="3000"></div>
+      <div class="field"><label>Or by date</label><input class="inp mono" id="svDueDate" type="date"></div>
+    </div></div>
+    <div class="err" id="svErr"></div>
+    <div class="actions"><button class="btn danger hidden" id="svDel" onclick="deleteService()">Delete</button><button class="btn" onclick="saveService()">Save</button></div>
+  </div>
+</div>
+
+<div class="mov" id="movDue" onclick="if(event.target===this)closeMov('movDue')">
+  <div class="modal">
+    <div class="modal-hd"><div class="modal-title">Upcoming service</div><button class="modal-x" onclick="closeMov('movDue')">×</button></div>
+    <div class="field"><label>What</label><div class="presets" id="duPresets"></div><input class="inp" id="duTask" placeholder="Or type it…"></div>
+    <div class="field-row">
+      <div class="field"><label>Due at mileage</label><input class="inp mono" id="duMiles" type="number" inputmode="numeric" min="0"></div>
+      <div class="field"><label>Or by date</label><input class="inp mono" id="duDate" type="date"></div>
+    </div>
+    <div class="field"><label>Notes</label><input class="inp" id="duNotes" placeholder="Optional"></div>
+    <div class="err" id="duErr"></div>
+    <div class="actions"><button class="btn" onclick="saveDue()">Save</button></div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
@@ -801,9 +872,10 @@ function segVal(segId){ return $(segId).querySelector('button.active')?.dataset.
 function setSync(state, lbl){ const d=$('syncDot'); d.className='sync-dot '+state; if(lbl) $('syncLbl').textContent=lbl; }
 
 /* ═══ STATE ═══ */
-const S = { user:null, profile:null, garage:null, members:[], events:[], rsvps:[], lifts:[], posts:[], replies:[], polls:[], votes:[], receipts:[], bikes:[], signoffs:[], buckets:[], plan:[] };
+const S = { user:null, profile:null, garage:null, members:[], events:[], rsvps:[], lifts:[], posts:[], replies:[], polls:[], votes:[], receipts:[], bikes:[], signoffs:[], buckets:[], plan:[], maint:[], rides:[] };
 let mainView='board', calFilter='all', forumFilter='all', calCursor=new Date(), calSel=todayYmd(), liftDay=todayYmd(), editEventId=null, openThreadId=null;
 const BOARD_WIDGETS = [
+  {id:'bikes', label:'My bikes'},
   {id:'fund', label:'Fund balance'},
   {id:'event', label:'Next event + RSVP'},
   {id:'lift', label:'Upcoming lift slots'},
@@ -819,8 +891,8 @@ const THEMES = [
 
 /* ═══ DATA LAYER — same API over Supabase or localStorage ═══ */
 const LS = { get:(k,d)=>{ try{ const v=localStorage.getItem('g43_'+k); return v?JSON.parse(v):d; }catch(e){ return d; } }, set:(k,v)=>{ try{ localStorage.setItem('g43_'+k, JSON.stringify(v)); }catch(e){} } };
-const TABLES = { events:'garage_events', rsvps:'event_rsvps', lifts:'lift_bookings', posts:'garage_posts', replies:'garage_replies', polls:'garage_polls', votes:'poll_votes', receipts:'garage_receipts', bikes:'bikes', signoffs:'lift_signoffs', buckets:'fund_buckets', plan:'fund_recurring' };
-const GARAGE_SCOPED = new Set(['garage_events','lift_bookings','garage_posts','garage_polls','garage_receipts','bikes','lift_signoffs','fund_buckets','fund_recurring']);
+const TABLES = { events:'garage_events', rsvps:'event_rsvps', lifts:'lift_bookings', posts:'garage_posts', replies:'garage_replies', polls:'garage_polls', votes:'poll_votes', receipts:'garage_receipts', bikes:'bikes', signoffs:'lift_signoffs', buckets:'fund_buckets', plan:'fund_recurring', maint:'maintenance_tasks', rides:'bike_mileage_log' };
+const GARAGE_SCOPED = new Set(['garage_events','lift_bookings','garage_posts','garage_polls','garage_receipts','bikes','lift_signoffs','fund_buckets','fund_recurring','maintenance_tasks','bike_mileage_log']);
 
 const db = {
   async list(table){
@@ -847,11 +919,11 @@ const db = {
 async function loadAll(){
   setSync('syncing', LOCAL ? 'Local' : 'Syncing');
   try{
-    const [events, rsvps, lifts, posts, replies, polls, votes, receipts, bikes, signoffs, buckets, plan] = await Promise.all(
-      ['events','rsvps','lifts','posts','replies','polls','votes','receipts','bikes','signoffs','buckets','plan'].map(k => db.list(TABLES[k]).catch(e => { console.warn(k, e); return null; }))
+    const [events, rsvps, lifts, posts, replies, polls, votes, receipts, bikes, signoffs, buckets, plan, maint, rides] = await Promise.all(
+      ['events','rsvps','lifts','posts','replies','polls','votes','receipts','bikes','signoffs','buckets','plan','maint','rides'].map(k => db.list(TABLES[k]).catch(e => { console.warn(k, e); return null; }))
     );
     if(events) S.events=events; if(rsvps) S.rsvps=rsvps; if(lifts) S.lifts=lifts; if(posts) S.posts=posts;
-    if(replies) S.replies=replies; if(polls) S.polls=polls; if(votes) S.votes=votes; if(receipts) S.receipts=receipts; if(bikes) S.bikes=bikes; if(signoffs) S.signoffs=signoffs; if(buckets) S.buckets=buckets; if(plan) S.plan=plan;
+    if(replies) S.replies=replies; if(polls) S.polls=polls; if(votes) S.votes=votes; if(receipts) S.receipts=receipts; if(bikes) S.bikes=bikes; if(signoffs) S.signoffs=signoffs; if(buckets) S.buckets=buckets; if(plan) S.plan=plan; if(maint) S.maint=maint; if(rides) S.rides=rides;
     if(!LOCAL){
       const { data:mems, error:me1 } = await sb.from('garage_members').select('user_id, role, rank').eq('garage_id', S.garage.id);
       if(me1) console.warn('members', me1);
@@ -1039,6 +1111,8 @@ function renderBoard(){
   for(const w of boardLayout()){
     if(!w.enabled) continue;
     if((w.id==='fund'||w.id==='receipts') && !canSeeMoney()) continue;
+    if(w.id==='bikes'){ const bs=bikesOf(me());
+      parts.push(`<div class="panel"><div class="panel-hd"><div class="panel-title">My bikes</div><button class="panel-link" onclick="${bs.length?'openRide()':'openProfile()'}">${bs.length?'Log ride':'Add a bike'}</button></div>${bs.length?bs.map(b=>{ const d=nextDue(b); return `<div class="row" style="cursor:pointer" onclick="openBikeView('${b.id}')"><div class="bike" style="margin:0;padding:0;border:none;background:none;gap:10px"><div class="ph" style="width:48px;height:36px">${b.photo_url?`<img src="${b.photo_url}" alt="">`:'🏍'}</div></div><div class="grow"><div class="t">${esc(b.name||bikeTitle(b))}</div><div class="s">${(+b.current_mileage||0).toLocaleString()} mi${d?` · <span style="color:${d.over?'var(--danger)':d.soon?'var(--warn)':'inherit'}">${esc(d.task)} ${d.label}</span>`:''}</div></div><button class="btn sm ghost" onclick="event.stopPropagation();openRide('${b.id}')">Ride</button></div>`; }).join(''):`<div class="empty">Add your bikes under My profile.</div>`}</div>`); }
     if(w.id==='fund'){ const b=balance();
       parts.push(`<div class="panel"><div class="panel-hd"><div class="panel-title">Garage fund</div><button class="panel-link" onclick="switchMain('ledger')">Ledger</button></div><div class="big-num ${b<0?'neg':''}">${money(b)}</div><div class="vsub">${S.receipts.length} entries</div></div>`); }
     if(w.id==='event'){ const e=upcomingEvents()[0];
@@ -1475,7 +1549,7 @@ async function saveProfile(){
 let _bikePic='', editBikeId=null;
 function bikesOf(userId){ return S.bikes.filter(b=>b.added_by===userId).sort((a,b)=>(a.created_at||'').localeCompare(b.created_at||'')); }
 function bikeTitle(b){ return [b.year, b.make, b.model].filter(Boolean).join(' ') || b.name || 'Bike'; }
-function bikeCard(b, tap){ return `<div class="bike ${tap?'tap':''}" ${tap?`onclick="openBike('${b.id}')"`:''}><div class="ph">${b.photo_url?`<img src="${b.photo_url}" alt="">`:'🏍'}</div><div class="grow"><div class="bn">${esc(b.name||bikeTitle(b))}</div><div class="bs">${[b.name?esc(bikeTitle(b)):'', b.current_mileage?(+b.current_mileage).toLocaleString()+' mi':'', b.notes?esc(b.notes):''].filter(Boolean).join(' · ')||'&nbsp;'}</div></div></div>`; }
+function bikeCard(b, tap){ return `<div class="bike tap" onclick="${tap?`openBike('${b.id}')`:`openBikeView('${b.id}')`}"><div class="ph">${b.photo_url?`<img src="${b.photo_url}" alt="">`:'🏍'}</div><div class="grow"><div class="bn">${esc(b.name||bikeTitle(b))}</div><div class="bs">${[b.name?esc(bikeTitle(b)):'', b.current_mileage?(+b.current_mileage).toLocaleString()+' mi':'', b.notes?esc(b.notes):''].filter(Boolean).join(' · ')||'&nbsp;'}</div></div></div>`; }
 function renderPfBikes(){ const bs=bikesOf(me()); $('pfBikeList').innerHTML = bs.length ? bs.map(b=>bikeCard(b,true)).join('') : `<div class="vsub">No bikes yet.</div>`; }
 function openBike(id){
   editBikeId=id||null; const b=id?S.bikes.find(x=>x.id===id):null;
@@ -1504,6 +1578,80 @@ async function deleteBike(){
   if(!editBikeId || !confirm('Remove this bike?')) return;
   try{ await db.remove(TABLES.bikes,editBikeId); S.bikes=S.bikes.filter(b=>b.id!==editBikeId); closeMov('movBike'); renderPfBikes(); toast('Bike removed'); }catch(e){ $('bkErr').textContent=e.message; }
 }
+
+/* ═══ RIDES & MAINTENANCE ═══ */
+const SERVICE_PRESETS=['Oil change','Oil filter','Brake pads','Brake fluid','Front tire','Rear tire','Chain & sprockets','Belt','Air filter','Spark plugs','Coolant','Valve check','Battery','Fork seals','Inspection'];
+function maintOf(bikeId){ return S.maint.filter(m=>m.bike_id===bikeId); }
+function ridesOf(bikeId){ return S.rides.filter(r=>r.bike_id===bikeId).sort((a,b)=>(b.ride_date+b.created_at).localeCompare(a.ride_date+a.created_at)); }
+function canEditBike(b){ return b && (b.added_by===me() || isAdmin()); }
+function dueInfo(b, m){ const mi=+b.current_mileage||0; const t=todayYmd(); let over=false, soon=false, label='';
+  if(m.due_mileage){ const left=m.due_mileage-mi; over=left<=0; soon=!over&&left<=300; label=over?`${Math.abs(left).toLocaleString()} mi overdue`:`in ${left.toLocaleString()} mi`; }
+  if(m.due_date){ const days=Math.round((fromYmd(m.due_date)-fromYmd(t))/86400000); const o=days<=0, s=!o&&days<=14; if(!m.due_mileage||o){ over=over||o; soon=soon||s; label=o?`${Math.abs(days)} d overdue`:(label?label+' / ':'')+`in ${days} d`; } else if(!label) label=`by ${fmtDate(m.due_date)}`; }
+  return { task:m.task, over, soon, label }; }
+function nextDue(b){ const pend=maintOf(b.id).filter(m=>!m.completed).map(m=>dueInfo(b,m)); if(!pend.length) return null; return pend.sort((x,y)=>(y.over-x.over)||(y.soon-x.soon))[0]; }
+
+function openBikeView(id){
+  const b=S.bikes.find(x=>x.id===id); if(!b) return; const mine=canEditBike(b); const rides=ridesOf(id); const pend=maintOf(id).filter(m=>!m.completed); const done=maintOf(id).filter(m=>m.completed).sort((x,y)=>(y.completed_date||'').localeCompare(x.completed_date||''));
+  const spent=done.reduce((s,m)=>s+(+m.parts_cost||0)+(+m.labor_cost||0),0);
+  $('bikeViewModal').innerHTML=`<div class="modal-hd"><div class="modal-title">${esc(b.name||bikeTitle(b))}</div><button class="modal-x" onclick="closeMov('movBikeView')">×</button></div>
+    <div class="bike-hero">${b.photo_url?`<img src="${b.photo_url}" alt="">`:'🏍'}</div>
+    <div class="vsub" style="margin:-6px 0 10px">${b.name?esc(bikeTitle(b))+' · ':''}${esc(nameOf(b.added_by))}${mine?` · <button class="panel-link" onclick="closeMov('movBikeView');openBike('${b.id}')">edit bike</button>`:''}</div>
+    <div class="odo"><div><div class="u">ODOMETER</div><div class="n">${(+b.current_mileage||0).toLocaleString()}</div></div>${mine?`<button class="btn sm" onclick="openRide('${b.id}')">Log ride</button>`:''}</div>
+    <div class="panel-hd"><div class="panel-title">Coming up</div>${mine?`<button class="panel-link" onclick="openDue('${b.id}')">+ Add</button>`:''}</div>
+    ${pend.length?pend.map(m=>{ const d=dueInfo(b,m); return `<div class="due ${d.over?'over':d.soon?'soon':''}"><div class="grow"><div class="t">${esc(m.task)}</div><div class="s">${d.label}${m.notes?' · '+esc(m.notes):''}</div></div>${mine?`<button class="btn sm ghost" onclick="openService('${b.id}',null,'${m.id}')">Done</button>`:''}</div>`; }).join(''):`<div class="vsub" style="padding:6px 0 10px">Nothing scheduled.</div>`}
+    <div class="panel-hd" style="margin-top:14px"><div class="panel-title">Service history</div>${mine?`<button class="panel-link" onclick="openService('${b.id}')">+ Log service</button>`:''}</div>
+    ${done.length?done.map(m=>`<div class="due" ${mine?`style="cursor:pointer" onclick="openService('${b.id}','${m.id}')"`:''}>${m.photo_url?`<img class="rphoto" src="${m.photo_url}" alt="">`:''}<div class="grow"><div class="t">${esc(m.task)}</div><div class="s">${m.completed_date?fmtDate(m.completed_date):''}${m.completed_mileage?' · '+(+m.completed_mileage).toLocaleString()+' mi':''}${(+m.parts_cost||+m.labor_cost)?' · '+money((+m.parts_cost||0)+(+m.labor_cost||0)):''}${m.notes?' · '+esc(m.notes):''}</div></div></div>`).join('')+`<div class="mini" style="margin-top:8px">${done.length} services · ${money(spent)} total</div>`:`<div class="vsub" style="padding:6px 0 10px">No service logged yet.</div>`}
+    <div class="panel-hd" style="margin-top:14px"><div class="panel-title">Rides</div></div>
+    ${rides.length?rides.slice(0,8).map(r=>`<div class="due"><div class="grow"><div class="t">${r.miles?`+${(+r.miles).toLocaleString()} mi`:'—'}${r.note?' · '+esc(r.note):''}</div><div class="s">${fmtDate(r.ride_date)} · odo ${(+r.odometer).toLocaleString()}</div></div>${mine?`<button class="rel" style="background:none;border:none;color:var(--danger);font-size:12px" onclick="deleteRide('${r.id}')">×</button>`:''}</div>`).join(''):`<div class="vsub" style="padding:6px 0 10px">No rides logged.</div>`}`;
+  openMov('movBikeView');
+}
+/* rides */
+let rdBikeId=null;
+function openRide(bikeId){
+  const mine=bikesOf(me()); if(!mine.length){ toast('Add a bike first'); openProfile(); return; }
+  $('rdBike').innerHTML=mine.map(b=>`<option value="${b.id}">${esc(b.name||bikeTitle(b))}</option>`).join(''); $('rdBike').value=bikeId||mine[0].id;
+  $('rdDate').value=todayYmd(); $('rdNote').value=''; $('rdNum').value=''; $('rdErr').textContent=''; $('rdMode').querySelectorAll('button').forEach(x=>x.classList.toggle('active',x.dataset.v==='odo')); rdBikeChanged(); openMov('movRide'); setTimeout(()=>$('rdNum').focus(),250);
+}
+function rdBikeChanged(){ const b=S.bikes.find(x=>x.id===$('rdBike').value); rdBikeId=b?.id; rdModeChanged(); }
+function rdModeChanged(){ const b=S.bikes.find(x=>x.id===rdBikeId); const cur=+b?.current_mileage||0; const odo=segVal('rdMode')==='odo'; $('rdNumLbl').textContent=odo?'Odometer now':'Miles ridden'; $('rdNum').placeholder=odo?String(cur+50):'42'; $('rdHint').textContent=`Currently ${cur.toLocaleString()} mi`; }
+async function saveRide(){
+  const b=S.bikes.find(x=>x.id===rdBikeId); const n=parseInt($('rdNum').value); const cur=+b.current_mileage||0; if(!(n>=0)){ $('rdErr').textContent='Enter a number.'; return; }
+  const odo=segVal('rdMode')==='odo'?n:cur+n; const miles=odo-cur; if(odo<cur){ $('rdErr').textContent=`That's below the current ${cur.toLocaleString()} mi. Edit the bike if the odometer is wrong.`; return; }
+  const row={ id:uid(), garage_id:S.garage.id, bike_id:b.id, user_id:me(), ride_date:$('rdDate').value||todayYmd(), odometer:odo, miles, note:$('rdNote').value.trim()||null, created_at:new Date().toISOString() };
+  try{ await db.upsert(TABLES.rides,row); S.rides.push(row); b.current_mileage=odo; await db.upsert(TABLES.bikes,{...b}); closeMov('movRide'); if($('movBikeView').classList.contains('open')) openBikeView(b.id); renderCurrent(); toast(`+${miles.toLocaleString()} mi logged`); }
+  catch(e){ $('rdErr').textContent=e.message||'Could not save.'; }
+}
+async function deleteRide(id){ const r=S.rides.find(x=>x.id===id); if(!r||!confirm('Remove this ride? The odometer will not be rolled back.')) return; try{ await db.remove(TABLES.rides,id); S.rides=S.rides.filter(x=>x.id!==id); openBikeView(r.bike_id); }catch(e){ toast('Could not remove'); } }
+/* service */
+let svBikeId=null, svEditId=null, svFromDueId=null, svPhoto='';
+function presetChips(hostId, inputId){ $(hostId).innerHTML=SERVICE_PRESETS.map(p=>`<button class="chip" onclick="document.getElementById('${inputId}').value='${p}'">${p}</button>`).join(''); }
+function openService(bikeId, editId, fromDueId){
+  const b=S.bikes.find(x=>x.id===bikeId); svBikeId=bikeId; svEditId=editId||null; svFromDueId=fromDueId||null; const m=editId?S.maint.find(x=>x.id===editId):fromDueId?S.maint.find(x=>x.id===fromDueId):null;
+  $('svHd').textContent=editId?'Edit service':fromDueId?'Mark done':'Log service'; presetChips('svPresets','svTask');
+  $('svTask').value=m?.task||''; $('svDate').value=m?.completed_date||todayYmd(); $('svMiles').value=m?.completed_mileage||b?.current_mileage||''; $('svParts').value=m?.parts_cost||''; $('svLabor').value=m?.labor_cost||''; $('svNotes').value=(editId?m?.notes:'')||''; svPhoto=m?.photo_url||''; drawSvPhoto();
+  $('svRemind').checked=false; $('svRemindWrap').classList.add('hidden'); $('svEveryMi').value=''; $('svDueDate').value=''; $('svErr').textContent=''; $('svDel').classList.toggle('hidden',!editId); openMov('movService');
+}
+function drawSvPhoto(){ $('svPhotoWrap').innerHTML = svPhoto?`<div class="ph"><img src="${svPhoto}" alt=""><button class="x" onclick="svPhoto='';drawSvPhoto()">×</button></div>`:`<button class="add" onclick="document.getElementById('svPhotoIn').click()">+ photo</button>`; }
+async function pickSvPhoto(input){ const f=input.files&&input.files[0]; if(!f) return; $('svErr').textContent='Uploading…'; try{ svPhoto=await uploadPhoto(f,'maintenance'); $('svErr').textContent=''; drawSvPhoto(); }catch(e){ $('svErr').textContent='Upload failed: '+(e.message||e); } input.value=''; }
+async function saveService(){
+  const task=$('svTask').value.trim(); if(!task){ $('svErr').textContent='What was done?'; return; }
+  const b=S.bikes.find(x=>x.id===svBikeId); const miles=parseInt($('svMiles').value)||null;
+  const ex=svEditId?S.maint.find(x=>x.id===svEditId):svFromDueId?S.maint.find(x=>x.id===svFromDueId):null;
+  const row={ id:ex?.id||uid(), garage_id:S.garage.id, bike_id:svBikeId, task, due_date:null, due_mileage:null, notes:$('svNotes').value.trim()||null, parts_cost:parseFloat($('svParts').value)||0, labor_cost:parseFloat($('svLabor').value)||0, photo_url:svPhoto||null, completed:true, completed_date:$('svDate').value||todayYmd(), completed_mileage:miles, created_at:ex?.created_at||new Date().toISOString() };
+  try{
+    await db.upsert(TABLES.maint,row); if(ex) Object.assign(ex,row); else S.maint.push(row);
+    if($('svRemind').checked){ const every=parseInt($('svEveryMi').value)||0; const dd=$('svDueDate').value||null; if(every||dd){ const nx={ id:uid(), garage_id:S.garage.id, bike_id:svBikeId, task, due_date:dd, due_mileage:every?(miles||+b.current_mileage||0)+every:null, notes:every?`every ${every.toLocaleString()} mi`:null, parts_cost:0, labor_cost:0, photo_url:null, completed:false, completed_date:null, completed_mileage:null, created_at:new Date().toISOString() }; await db.upsert(TABLES.maint,nx); S.maint.push(nx); } }
+    if(miles && miles>(+b.current_mileage||0)){ b.current_mileage=miles; await db.upsert(TABLES.bikes,{...b}); }
+    closeMov('movService'); openBikeView(svBikeId); renderCurrent(); toast('Saved');
+  }catch(e){ $('svErr').textContent=e.message||'Could not save.'; }
+}
+async function deleteService(){ if(!svEditId||!confirm('Delete this service record?')) return; try{ await db.remove(TABLES.maint,svEditId); S.maint=S.maint.filter(m=>m.id!==svEditId); closeMov('movService'); openBikeView(svBikeId); }catch(e){ $('svErr').textContent=e.message; } }
+/* upcoming (reminder without a completed service) */
+let duBikeId=null;
+function openDue(bikeId){ duBikeId=bikeId; presetChips('duPresets','duTask'); $('duTask').value=''; $('duMiles').value=''; $('duDate').value=''; $('duNotes').value=''; $('duErr').textContent=''; openMov('movDue'); }
+async function saveDue(){ const task=$('duTask').value.trim(); const mi=parseInt($('duMiles').value)||null; const dd=$('duDate').value||null; if(!task){ $('duErr').textContent='What needs doing?'; return; } if(!mi&&!dd){ $('duErr').textContent='Give it a mileage or a date.'; return; }
+  const row={ id:uid(), garage_id:S.garage.id, bike_id:duBikeId, task, due_date:dd, due_mileage:mi, notes:$('duNotes').value.trim()||null, parts_cost:0, labor_cost:0, photo_url:null, completed:false, completed_date:null, completed_mileage:null, created_at:new Date().toISOString() };
+  try{ await db.upsert(TABLES.maint,row); S.maint.push(row); closeMov('movDue'); openBikeView(duBikeId); renderCurrent(); }catch(e){ $('duErr').textContent=e.message; } }
 
 /* ═══ MEMBER DETAIL / ROLES ═══ */
 function openMember(userId){
