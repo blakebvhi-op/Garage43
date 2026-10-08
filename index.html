@@ -443,7 +443,7 @@ header .wordmark{font-size:24px;}
           Continue with Google
         </button>
         <hr class="auth-divider">
-        <div class="auth-switch">No account? <span onclick="showAuthForm('signup')">Create one</span></div>
+        <div class="auth-switch">No account? <span onclick="showAuthForm('signup')">Create one</span> · <span onclick="doForgot()">Forgot password?</span></div>
       </div>
     </div>
 
@@ -456,6 +456,15 @@ header .wordmark{font-size:24px;}
         <div class="auth-error" id="suError"></div>
         <hr class="auth-divider">
         <div class="auth-switch">Already have one? <span onclick="showAuthForm('signin')">Sign in</span></div>
+      </div>
+    </div>
+
+    <div id="authReset" class="hidden">
+      <div class="auth-title">Set a new password</div>
+      <div class="stack">
+        <input class="auth-input" id="rsPassword" type="password" placeholder="New password (8+ characters)" autocomplete="new-password" onkeydown="if(event.key==='Enter')doReset()">
+        <button class="auth-btn" onclick="doReset()">Save password</button>
+        <div class="auth-error" id="rsError"></div>
       </div>
     </div>
 
@@ -1062,8 +1071,8 @@ function roleOf(userId){ if(userId===S.garage?.owner_id) return 'owner'; const r
 
 /* ═══ AUTH FLOW ═══ */
 function showAuthForm(which){
-  ['authSignIn','authSignUp','authProfile','authHub'].forEach(id=>$(id).classList.add('hidden'));
-  $({signin:'authSignIn',signup:'authSignUp',profile:'authProfile',hub:'authHub'}[which]).classList.remove('hidden'); $('authCard').classList.toggle('wide', which==='hub');
+  ['authSignIn','authSignUp','authProfile','authHub','authReset'].forEach(id=>$(id).classList.add('hidden'));
+  $({signin:'authSignIn',signup:'authSignUp',profile:'authProfile',hub:'authHub',reset:'authReset'}[which]).classList.remove('hidden'); $('authCard').classList.toggle('wide', which==='hub');
   $('authScreen').classList.remove('hidden'); $('loading').classList.add('hidden');
 }
 async function doSignIn(){
@@ -1078,6 +1087,17 @@ async function doSignUp(){
   if(error){ $('suError').textContent=error.message; return; }
   if(data.user && !data.session) $('suError').textContent='Check your email to confirm, then sign in.';
 }
+async function doForgot(){
+  const email=$('siEmail').value.trim(); if(!email){ $('siError').textContent='Type your email above first, then tap Forgot password.'; return; }
+  const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+  $('siError').textContent = error ? error.message : 'Check your email for a reset link.';
+}
+async function doReset(){
+  const pw=$('rsPassword').value; if(pw.length<8){ $('rsError').textContent='8 characters minimum.'; return; }
+  const { error } = await sb.auth.updateUser({ password: pw }); if(error){ $('rsError').textContent=error.message; return; }
+  _recovering=false; history.replaceState(null,'',location.pathname); toast('Password updated'); await resumeAuth();
+}
+let _recovering=false;
 async function doGoogle(){ await sb.auth.signInWithOAuth({ provider:'google', options:{ redirectTo: location.origin + location.pathname } }); }
 async function doSignOut(){ if(LOCAL){ toast('Local mode has no sign-in'); return; } await sb.auth.signOut(); location.reload(); }
 async function doSaveProfile(){
@@ -1136,9 +1156,10 @@ function enterGarage(id){
 async function bootRemote(){
   $('loadMsg').textContent='Checking sign-in…';
   const { data:{ session } } = await sb.auth.getSession();
-  sb.auth.onAuthStateChange((evt, sess) => { if(evt==='SIGNED_IN' && !S.user){ S.user=sess.user; resumeAuth(); } if(evt==='SIGNED_OUT'){ location.reload(); } });
+  sb.auth.onAuthStateChange((evt, sess) => { if(evt==='PASSWORD_RECOVERY'){ _recovering=true; S.user=sess.user; showAuthForm('reset'); return; } if(evt==='SIGNED_IN' && !S.user && !_recovering){ S.user=sess.user; resumeAuth(); } if(evt==='SIGNED_OUT'){ location.reload(); } });
+  if(/type=recovery/.test(location.hash)){ _recovering=true; }
   if(!session){ showAuthForm('signin'); return; }
-  S.user = session.user; await resumeAuth();
+  S.user = session.user; if(_recovering){ showAuthForm('reset'); return; } await resumeAuth();
 }
 async function resumeAuth(){
   const { data:p } = await sb.from('profiles').select('*').eq('id', me()).maybeSingle();
