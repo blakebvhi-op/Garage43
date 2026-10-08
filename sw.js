@@ -1,5 +1,7 @@
 // Garage 43 — service worker: offline shell cache + web push.
-const CACHE = 'g43-v2';
+// index.html / sw.js / manifest are NETWORK-FIRST so pushes show up immediately;
+// fonts, icons and the Supabase JS bundle are cache-first (they're versioned).
+const CACHE = 'g43-v4';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
@@ -8,17 +10,23 @@ self.addEventListener('install', e => {
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim()));
 });
-// App shell + fonts: cache-first. Supabase and everything else: network only.
+
 self.addEventListener('fetch', e => {
-  const u = new URL(e.request.url);
-  if (e.request.method !== 'GET') return;
-  if (u.hostname.endsWith('supabase.co')) return;
-  const cacheable = u.origin === location.origin || u.hostname === 'fonts.googleapis.com' || u.hostname === 'fonts.gstatic.com' || u.hostname === 'cdn.jsdelivr.net';
+  const req = e.request; const u = new URL(req.url);
+  if (req.method !== 'GET') return;
+  if (u.hostname.endsWith('supabase.co')) return;                // never cache data
+
+  const isShell = req.mode === 'navigate' || (u.origin === location.origin && /\.(html|webmanifest)$|\/sw\.js$|\/$/.test(u.pathname));
+  if (isShell) {
+    // network-first, fall back to cache when offline
+    e.respondWith(fetch(req).then(res => { if (res.ok) caches.open(CACHE).then(c => c.put(req, res.clone())); return res; })
+      .catch(() => caches.match(req).then(hit => hit || caches.match('./index.html'))));
+    return;
+  }
+  const cacheable = u.origin === location.origin || ['fonts.googleapis.com','fonts.gstatic.com','cdn.jsdelivr.net','tessdata.projectnaptha.com'].includes(u.hostname);
   if (!cacheable) return;
-  e.respondWith(caches.match(e.request).then(hit => hit || fetch(e.request).then(res => {
-    if (res.ok) caches.open(CACHE).then(c => c.put(e.request, res.clone()));
-    return res;
-  }).catch(() => (e.request.mode === 'navigate' ? caches.match('./index.html') : undefined))));
+  // cache-first for static assets
+  e.respondWith(caches.match(req).then(hit => hit || fetch(req).then(res => { if (res.ok) caches.open(CACHE).then(c => c.put(req, res.clone())); return res; })));
 });
 
 self.addEventListener('push', e => {
