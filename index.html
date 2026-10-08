@@ -153,6 +153,12 @@ header .wordmark{font-size:24px;}
 .snap .s{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:2px;}
 .snap.ok{border-color:var(--ok);}
 .snap.busy{opacity:.7;}
+.gres{display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--line);border-radius:8px;margin-top:6px;text-align:left;}
+.gres .grow{flex:1;min-width:0;}
+.gres .t{font-weight:600;}
+.gres .s{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:2px;}
+.waiting{text-align:center;padding:10px 0;}
+.waiting .big{font-family:var(--disp);font-weight:600;font-size:20px;margin:8px 0 4px;}
 .member-hd .nm{font-family:var(--disp);font-weight:700;font-size:24px;line-height:1;}
 .role-pill{font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:4px;border:1px solid var(--line);color:var(--muted);}
 .role-pill.owner{border-color:var(--accent);color:var(--accent);}
@@ -457,16 +463,31 @@ header .wordmark{font-size:24px;}
     </div>
 
     <div id="authGarage" class="hidden">
-      <div class="auth-title">Join a garage</div>
+      <div class="auth-title">Find your garage</div>
       <div class="stack">
-        <input class="auth-input mono" id="jgCode" type="text" placeholder="Invite code" autocomplete="off" maxlength="12" style="text-transform:lowercase" onkeydown="if(event.key==='Enter')doJoinGarage()">
-        <button class="auth-btn" onclick="doJoinGarage()">Join with code</button>
-        <div class="auth-error" id="jgError"></div>
+        <input class="auth-input" id="gsQ" type="text" placeholder="Search by garage name…" autocomplete="off" oninput="searchGarages()">
+        <div id="gsResults"></div>
+        <div class="auth-error" id="gsError"></div>
+        <hr class="auth-divider">
+        <div class="auth-switch">Got an invite code? <span onclick="document.getElementById('jgCodeWrap').classList.toggle('hidden')">Enter it</span></div>
+        <div id="jgCodeWrap" class="hidden stack">
+          <input class="auth-input mono" id="jgCode" type="text" placeholder="Invite code" autocomplete="off" maxlength="12" style="text-transform:lowercase" onkeydown="if(event.key==='Enter')doJoinGarage()">
+          <button class="auth-btn" onclick="doJoinGarage()">Join with code</button>
+          <div class="auth-error" id="jgError"></div>
+        </div>
         <hr class="auth-divider">
         <div class="auth-title" style="font-size:18px">Or start a new one</div>
         <input class="auth-input" id="cgName" type="text" placeholder="Garage name" maxlength="40">
         <button class="auth-btn" style="background:transparent;border:1px solid var(--line);color:var(--ink)" onclick="doCreateGarage()">Create garage</button>
         <div class="auth-error" id="cgError"></div>
+        <div class="auth-switch"><span onclick="doSignOut()">Sign out</span></div>
+      </div>
+    </div>
+
+    <div id="authWaiting" class="hidden">
+      <div class="waiting"><div style="font-size:40px">⏳</div><div class="big">Request sent</div><div class="vsub" id="waitMsg"></div></div>
+      <div class="stack" style="margin-top:14px">
+        <button class="auth-btn" style="background:transparent;border:1px solid var(--line);color:var(--ink)" onclick="cancelJoinRequest()">Cancel request</button>
         <div class="auth-switch"><span onclick="doSignOut()">Sign out</span></div>
       </div>
     </div>
@@ -497,7 +518,7 @@ header .wordmark{font-size:24px;}
   <div class="user-menu-item" onclick="openInvite()"><span>🔑</span><span>Invite code</span></div>
   <div class="user-menu-item" id="customizeItem" onclick="openCustomize()"><span>🧰</span><span>Customize board</span></div>
   <div class="user-menu-item" id="settingsItem" onclick="openSettings()"><span>⚙️</span><span>Garage settings</span></div>
-  <div class="user-menu-item" onclick="openMembers()"><span>👥</span><span>Crew</span></div>
+  <div class="user-menu-item" onclick="openMembers()"><span>👥</span><span>Crew</span><span class="status pending hidden" id="joinBadge" style="margin-left:auto"></span></div>
   <div class="user-menu-item" onclick="manualResync()"><span>🔄</span><span>Resync</span></div>
   <div class="user-menu-item danger" onclick="doSignOut()"><span>⏏</span><span>Sign out</span></div>
 </div>
@@ -939,7 +960,7 @@ function segVal(segId){ return $(segId).querySelector('button.active')?.dataset.
 function setSync(state, lbl){ const d=$('syncDot'); d.className='sync-dot '+state; if(lbl) $('syncLbl').textContent=lbl; }
 
 /* ═══ STATE ═══ */
-const S = { user:null, profile:null, garage:null, members:[], events:[], rsvps:[], lifts:[], posts:[], replies:[], polls:[], votes:[], receipts:[], bikes:[], signoffs:[], buckets:[], plan:[], maint:[], rides:[] };
+const S = { user:null, profile:null, garage:null, joinReqs:[], members:[], events:[], rsvps:[], lifts:[], posts:[], replies:[], polls:[], votes:[], receipts:[], bikes:[], signoffs:[], buckets:[], plan:[], maint:[], rides:[] };
 let mainView='board', calFilter='all', forumFilter='all', calCursor=new Date(), calSel=todayYmd(), liftDay=todayYmd(), editEventId=null, openThreadId=null;
 const BOARD_WIDGETS = [
   {id:'bikes', label:'My bikes'},
@@ -998,6 +1019,9 @@ async function loadAll(){
       const { data:profs, error:me2 } = ids.length ? await sb.from('profiles').select('id, display_name, email, road_name, avatar_url').in('id', ids) : { data:[] };
       if(me2) console.warn('profiles', me2);
       S.members=(mems||[]).map(m=>{ const p=(profs||[]).find(x=>x.id===m.user_id); return { user_id:m.user_id, role:m.role, rank:m.rank||'member', name:p?.display_name||p?.email||'Member', road_name:p?.road_name||'', avatar_url:p?.avatar_url||'' }; });
+      if(isAdmin()){ const { data:jr } = await sb.from('garage_join_requests').select('id, user_id, message, created_at').eq('garage_id', S.garage.id).eq('status','pending'); const jids=(jr||[]).map(r=>r.user_id); const { data:jp } = jids.length ? await sb.from('profiles').select('id, display_name, email, avatar_url').in('id', jids) : { data:[] }; S.joinReqs=(jr||[]).map(r=>{ const p=(jp||[]).find(x=>x.id===r.user_id)||{}; return { ...r, name:p.display_name||p.email||'Someone', email:p.email||'', avatar_url:p.avatar_url||'' }; }); }
+      else S.joinReqs=[];
+      $('joinBadge').textContent=S.joinReqs.length; $('joinBadge').classList.toggle('hidden', !S.joinReqs.length);
     }
     setSync(LOCAL?'':'synced', LOCAL ? 'Local' : 'Synced');
   }catch(e){ console.error(e); setSync('error', 'Offline'); }
@@ -1010,7 +1034,7 @@ let _rt=null, _rtT=null;
 function subscribeRealtime(){
   if(LOCAL || _rt) return;
   _rt = sb.channel('g43-'+S.garage.id);
-  [...Object.values(TABLES),'garage_members'].forEach(t => _rt.on('postgres_changes', { event:'*', schema:'public', table:t }, () => { clearTimeout(_rtT); _rtT=setTimeout(loadAll, 250); }));
+  [...Object.values(TABLES),'garage_members','garage_join_requests'].forEach(t => _rt.on('postgres_changes', { event:'*', schema:'public', table:t }, () => { clearTimeout(_rtT); _rtT=setTimeout(loadAll, 250); }));
   _rt.subscribe();
 }
 
@@ -1031,8 +1055,8 @@ function roleOf(userId){ if(userId===S.garage?.owner_id) return 'owner'; const r
 
 /* ═══ AUTH FLOW ═══ */
 function showAuthForm(which){
-  ['authSignIn','authSignUp','authProfile','authGarage'].forEach(id=>$(id).classList.add('hidden'));
-  $({signin:'authSignIn',signup:'authSignUp',profile:'authProfile',garage:'authGarage'}[which]).classList.remove('hidden');
+  ['authSignIn','authSignUp','authProfile','authGarage','authWaiting'].forEach(id=>$(id).classList.add('hidden'));
+  $({signin:'authSignIn',signup:'authSignUp',profile:'authProfile',garage:'authGarage',waiting:'authWaiting'}[which]).classList.remove('hidden');
   $('authScreen').classList.remove('hidden'); $('loading').classList.add('hidden');
 }
 async function doSignIn(){
@@ -1067,10 +1091,29 @@ async function doCreateGarage(){
   if(error){ $('cgError').textContent=error.message; return; }
   await afterProfile();
 }
+let _gsT=null, _waitT=null, pendingReq=null;
+async function searchGarages(){
+  clearTimeout(_gsT); const q=$('gsQ').value.trim(); if(q.length<2){ $('gsResults').innerHTML=''; return; }
+  _gsT=setTimeout(async()=>{
+    const { data, error } = await sb.rpc('search_garages', { q }); if(error){ $('gsError').textContent=error.message; return; }
+    $('gsResults').innerHTML=(data||[]).length?data.map(g=>`<div class="gres"><div class="grow"><div class="t">${esc(g.name)}</div><div class="s">${g.location?esc(g.location)+' · ':''}${g.member_count} member${g.member_count===1?'':'s'}</div></div><button class="btn sm" onclick="askJoin('${g.id}','${esc(g.name).replace(/'/g,'&#39;')}')">Request to join</button></div>`).join(''):`<div class="vsub" style="padding:6px 0">No garage by that name. Ask them for the exact name or an invite code.</div>`;
+  },250);
+}
+async function askJoin(gid, gname){
+  const message=prompt(`Anything the ${gname} managers should know? (optional)`,'')?.trim()||null;
+  const { error } = await sb.rpc('request_join', { gid, message }); if(error){ $('gsError').textContent=error.message; return; }
+  await afterProfile();
+}
+async function cancelJoinRequest(){ if(!pendingReq) return; await sb.from('garage_join_requests').delete().eq('id', pendingReq.id); pendingReq=null; clearTimeout(_waitT); showAuthForm('garage'); }
 async function afterProfile(){
   // Find the garage this member belongs to (first one).
   const { data: mem } = await sb.from('garage_members').select('garage_id, role, garages(*)').eq('user_id', me()).order('joined_at').limit(1);
-  if(!mem || !mem.length){ showAuthForm('garage'); return; }
+  if(!mem || !mem.length){
+    const { data: reqs } = await sb.from('garage_join_requests').select('id, status, garage_name').eq('user_id', me()).eq('status','pending').limit(1);
+    if(reqs && reqs.length){ pendingReq=reqs[0]; $('waitMsg').textContent=`Waiting on a manager at ${pendingReq.garage_name||'the garage'} to approve you.`; showAuthForm('waiting'); clearTimeout(_waitT); _waitT=setTimeout(afterProfile, 10000); return; }
+    showAuthForm('garage'); return;
+  }
+  clearTimeout(_waitT);
   S.garage = mem[0].garages;
   enterApp();
 }
@@ -1832,6 +1875,10 @@ function openMember(userId){
     ${canManage?`<div class="panel-hd" style="margin-top:16px"><div class="panel-title">Rank</div></div><div class="seg" id="mbRank"><button class="${rank==='hangaround'?'active':''}" onclick="setRank('${userId}','hangaround')">Hangaround</button><button class="${rank==='prospect'?'active':''}" onclick="setRank('${userId}','prospect')">Prospect</button><button class="${rank==='member'?'active':''}" onclick="setRank('${userId}','member')">Member</button></div><div class="vsub" style="margin:6px 0 14px">Rank decides which posts and events they can see. Managers always see everything.</div><div class="panel-hd"><div class="panel-title">Role</div></div><div class="seg" id="mbRole"><button class="${role==='manager'?'active':''}" data-v="manager" onclick="setRole('${userId}','manager')">Manager</button><button class="${role==='personnel'?'active':''}" data-v="personnel" onclick="setRole('${userId}','personnel')">Personnel</button></div><div class="vsub" style="margin:6px 0 14px">Managers can pin posts, customize the board, and clear anyone's events, receipts, or lift slots. Money still needs member rank.</div><div class="actions"><button class="btn danger" onclick="removeMember('${userId}')">Remove from garage</button></div>`:''}`;
   openMov('movMember');
 }
+async function decideJoin(id, ok){
+  try{ const { error } = await sb.rpc('decide_join', { req_id:id, approve:ok }); if(error) throw error; toast(ok?'Welcome aboard':'Declined'); await loadAll(); openMembers(true); }
+  catch(e){ toast(e.message||'Could not update'); }
+}
 async function setRank(userId, rank){
   try{ if(LOCAL) throw new Error('Local mode');
     const { error } = await sb.from('garage_members').update({ rank }).eq('garage_id',S.garage.id).eq('user_id',userId); if(error) throw error;
@@ -1856,7 +1903,8 @@ async function removeMember(userId){
 function openInvite(){ closeUserMenu(); $('invGarage').textContent=S.garage.name; $('invCode').textContent=LOCAL?'local mode':S.garage.invite_code; openMov('movInvite'); }
 function copyInvite(){ navigator.clipboard?.writeText(S.garage.invite_code||'').then(()=>toast('Copied')); }
 function openMembers(keep){ closeUserMenu(); const rank={owner:0,manager:1,personnel:2}; const ms=[...S.members].sort((a,b)=>(rank[roleOf(a.user_id)]??9)-(rank[roleOf(b.user_id)]??9)||a.name.localeCompare(b.name));
-  $('membersList').innerHTML=ms.map(m=>{ const role=roleOf(m.user_id); const bs=bikesOf(m.user_id); return `<div class="row" style="cursor:pointer" onclick="openMember('${m.user_id}')">${av(m.user_id,'')}<div class="grow"><div class="t">${esc(m.name)}${m.road_name?` <span class="road">“${esc(m.road_name)}”</span>`:''}</div><div class="s">${bs.length?bs.map(b=>esc(b.name||bikeTitle(b))).join(', '):'no bikes listed'}</div></div><span class="role-pill ${rankOf(m.user_id)}">${rankOf(m.user_id)}</span>${role!=='personnel'?`<span class="role-pill ${role}">${role}</span>`:''}</div>`; }).join('')||`<div class="empty">Just you so far.</div>`;
+  const jr=S.joinReqs.length?`<div class="panel-hd"><div class="panel-title">Join requests</div><span class="status pending">${S.joinReqs.length}</span></div>${S.joinReqs.map(r=>`<div class="row" style="flex-wrap:wrap"><div class="avatar sm">${r.avatar_url?`<img src="${r.avatar_url}" alt="">`:initials(r.name)}</div><div class="grow"><div class="t">${esc(r.name)}</div><div class="s">${esc(r.email)} · ${ago(r.created_at)}${r.message?' · “'+esc(r.message)+'”':''}</div></div><button class="btn sm" onclick="decideJoin('${r.id}',true)">Approve</button><button class="btn sm danger" onclick="decideJoin('${r.id}',false)">Decline</button></div>`).join('')}<div class="panel-hd" style="margin-top:14px"><div class="panel-title">Crew</div></div>`:'';
+  $('membersList').innerHTML=jr+ms.map(m=>{ const role=roleOf(m.user_id); const bs=bikesOf(m.user_id); return `<div class="row" style="cursor:pointer" onclick="openMember('${m.user_id}')">${av(m.user_id,'')}<div class="grow"><div class="t">${esc(m.name)}${m.road_name?` <span class="road">“${esc(m.road_name)}”</span>`:''}</div><div class="s">${bs.length?bs.map(b=>esc(b.name||bikeTitle(b))).join(', '):'no bikes listed'}</div></div><span class="role-pill ${rankOf(m.user_id)}">${rankOf(m.user_id)}</span>${role!=='personnel'?`<span class="role-pill ${role}">${role}</span>`:''}</div>`; }).join('')||`<div class="empty">Just you so far.</div>`;
   if(!keep) openMov('movMembers'); }
 
 /* ═══ PWA ═══ */
